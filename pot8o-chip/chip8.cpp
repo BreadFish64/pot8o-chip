@@ -1,4 +1,7 @@
 #include "chip8.h"
+#include <fstream>
+#include <istream>
+#include <vector>
 
 void Chip8::initialize()
 {
@@ -15,7 +18,7 @@ void Chip8::initialize()
 
 				 // Load fontset
 	for (int i = 0; i < 80; ++i)
-		memory[i] = chip8_fontset[i];
+		memory[i] = font[i];
 
 	// Reset timers
 }
@@ -27,7 +30,7 @@ void Chip8::emulateCycle()
 
 	// Decode Opcode
 	// Execute Opcode
-	switch (opcode) {
+	switch (opcode & 0xF000) {
 	case 0x0000:
 		switch (opcode & 0x000F)
 		{
@@ -60,4 +63,17 @@ void Chip8::emulateCycle()
 			printf("BEEP!\n");
 		--sound_timer;
 	}
+}
+
+void Chip8::loadGame(std::string path) {
+	std::ifstream file(path, std::ios::binary);
+	file.seekg(0, file.end);
+	int length = file.tellg();
+	file.seekg(0, file.beg);
+
+	char* buffer = new char[length];
+	file.read(buffer, length);
+
+	for (int i = 0; i < length; ++i)
+		memory[i + 512] = buffer[i];
 }
