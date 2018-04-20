@@ -20,8 +20,6 @@ public:
 	void initialize();
 	void emulateCycle();
 	void loadGame(std::string path);
-};
 
-const std::array<unsigned char, 80> font {
-	
+	static const std::array<unsigned char, 80> font;
 };
