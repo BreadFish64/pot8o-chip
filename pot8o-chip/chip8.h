@@ -2,6 +2,8 @@
 #include <array>
 #include <string>
 
+int power(int base, int exponent);
+
 class Chip8 {
 	unsigned short opcode;
 	std::array<unsigned char, 4096> memory;
@@ -15,7 +17,8 @@ class Chip8 {
 	std::array<unsigned char, 16> key;
 
 public:
-	std::array<std::array<unsigned char, 32>, 64> gfx;
+	std::array<std::array<bool, 32>, 64> gfx;
+	bool vf;
 
 	void initialize();
 	void emulateCycle();
