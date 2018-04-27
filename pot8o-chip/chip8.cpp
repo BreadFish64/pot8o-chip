@@ -3,13 +3,20 @@
 #include <vector>
 #include "chip8.h"
 
+Chip8::Chip8(std::queue<std::array<std::array<bool, 64>, 32>>& buffer,
+             std::timed_mutex& buffer_mutex)
+    : buffer(buffer), buffer_mutex(buffer_mutex) {
+    initialize();
+    loadGame("meep");
+    emulate();
+}
+
 void Chip8::initialize() {
     // Initialize registers and memory once
     pc = 0x200; // Program counter starts at 0x200
     opcode = 0; // Reset current opcode
     I = 0;      // Reset index register
     sp = 0;     // Reset stack pointer
-    vf = 0;
 
     for (auto& row : gfx) {
         for (bool& column : row) {
@@ -31,6 +38,12 @@ void Chip8::initialize() {
         memory[i] = font[i];
 
     // Reset timers
+}
+
+void Chip8::emulate() {
+    while (true) {
+        emulateCycle();
+    }
 }
 
 void Chip8::emulateCycle() {
@@ -104,18 +117,19 @@ void Chip8::emulateCycle() {
         break;
 
     case 0xD000: {
-        int x = V[opcode & 0x0F00 >> 8];
-        int height = opcode & 0x000F;
-        int y = (opcode & 0x00F0) >> 4;
-        for (int row = 0; row < height; row++) {
-            int byte = memory[I + row];
-            for (int i = 0; i < 8; i++) {
-                bool pixel = gfx[y + row][x + i];
-                gfx[y + row][x + i] = ((byte & power(2, i)) >> i) ^ pixel;
-                if (gfx[y + row][x + i] != pixel)
-                    vf = true;
+        unsigned char x = V[(opcode & 0x0F00) >> 8] + 7;
+        unsigned char height = opcode & 0x000F;
+        unsigned char y = V[(opcode & 0x00F0) >> 4];
+
+        for (unsigned char row = 0; row < height; row++) {
+            unsigned char byte = memory[I + row];
+            for (char i = 8; i >= 0; i--) {
+                bool pixel = gfx[y + row][x - i];
+                gfx[y + row][x - i] = ((byte & power(2, i)) >> i) ^ pixel;
             }
         }
+
+        buffer.push(gfx);
         break;
     }
 
@@ -179,7 +193,7 @@ void Chip8::emulateCycle() {
 }
 
 void Chip8::loadGame(std::string path) {
-    path = "E:/git/chip8_ROMs/TICTAC";
+    path = "E:/git/chip8_ROMs/IBMLogo";
     std::ifstream file(path, std::ios::binary);
     file.seekg(0, file.end);
     int length = file.tellg();
