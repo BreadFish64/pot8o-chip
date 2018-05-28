@@ -117,7 +117,7 @@ void Chip8::emulateCycle() {
         break;
 
     case 0xD000: {
-        unsigned char x = V[(opcode & 0x0F00) >> 8] + 7;
+        unsigned char x = V[(opcode & 0x0F00) >> 8] + 8;
         unsigned char height = opcode & 0x000F;
         unsigned char y = V[(opcode & 0x00F0) >> 4];
 
@@ -135,6 +135,10 @@ void Chip8::emulateCycle() {
 
     case 0xF000:
         switch (opcode & 0x00FF) {
+        case 0x000A:
+            V[(opcode & 0x0F00) >> 8] = keypad.waitForInput();
+            break;
+
         case 0x0015:
             delay_timer = V[(opcode & 0x0F00) >> 8];
             break;
@@ -187,13 +191,10 @@ void Chip8::emulateCycle() {
             printf("BEEP!\n");
         --sound_timer;
     }
-    if (pc >= 4096) {
-        pc = 0;
-    }
 }
 
 void Chip8::loadGame(std::string path) {
-    path = "E:/git/chip8_ROMs/IBMLogo";
+    path = "F:/git/chip8/TICTAC";
     std::ifstream file(path, std::ios::binary);
     file.seekg(0, file.end);
     int length = file.tellg();

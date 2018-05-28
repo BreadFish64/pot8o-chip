@@ -3,6 +3,7 @@
 #include <mutex>
 #include <string>
 #include <queue>
+#include "keypad.h"
 
 int power(int base, int exponent);
 
@@ -16,6 +17,8 @@ private:
 
     std::queue<std::array<std::array<bool, 64>, 32>>& buffer;
     std::timed_mutex& buffer_mutex;
+
+    Keypad keypad;
 
     std::array<std::array<bool, 64>, 32> gfx;
     std::array<unsigned short, 16> stack;

@@ -19,7 +19,7 @@ void Render::drawGraphics(std::array<std::array<bool, 64>, 32> frame) {
         for (int x = 0; x < frame[y].size(); x++) {
             printf("%d", frame[y][x]);
             int offset = y * 64 + x;
-            pixels[offset] = frame[y][x] ? 0x00000000 : 0xFFFFFFFF;
+            pixels[offset] = frame[y][x] ? 0xFFFF8000 : 0xFF000000;
         }
         printf("\n");
     }
