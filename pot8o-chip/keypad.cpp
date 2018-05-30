@@ -8,13 +8,18 @@ Keypad::~Keypad(){};
 unsigned char Keypad::waitForInput() {
     int* numkeys = nullptr;
     const unsigned char* state;
+    SDL_Event Event;
+
+    SDL_FlushEvents(SDL_KEYDOWN, SDL_KEYUP);
     while (true) {
-        state = SDL_GetKeyboardState(numkeys);
-        for (char i = 0; i < 16; i++) {
-            unsigned char key_num = static_cast<unsigned char>(keys[i]);
-            bool is = state[key_num];
-            if (is)
-                return i;
+        if (SDL_PollEvent(&Event) == 1) {
+            state = SDL_GetKeyboardState(numkeys);
+            for (char i = 0; i < 0x10; i++) {
+                unsigned char key_num = static_cast<unsigned char>(keys[i]);
+                bool is = state[key_num];
+                if (is)
+                    return i;
+            }
         }
     }
 }

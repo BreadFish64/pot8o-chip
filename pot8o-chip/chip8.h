@@ -3,24 +3,23 @@
 #include <mutex>
 #include <string>
 #include <queue>
-#include "keypad.h"
+
+class Keypad;
+class Render;
 
 int power(int base, int exponent);
 
 class Chip8 {
 public:
-    explicit Chip8(std::queue<std::array<std::array<bool, 64>, 32>>& buffer,
-                   std::timed_mutex& buffer_mutex);
+    explicit Chip8(Render* render);
 
 private:
     static const std::array<unsigned char, 80> font;
 
-    std::queue<std::array<std::array<bool, 64>, 32>>& buffer;
-    std::timed_mutex& buffer_mutex;
+    Render* render = nullptr;
+    Keypad* keypad = nullptr;
 
-    Keypad keypad;
-
-    std::array<std::array<bool, 64>, 32> gfx;
+    std::array<bool, 64 * 32> gfx;
     std::array<unsigned short, 16> stack;
     std::array<unsigned char, 0x1000> memory;
     std::array<unsigned char, 16> V;
@@ -31,6 +30,7 @@ private:
     unsigned short sp;
     unsigned char delay_timer;
     unsigned char sound_timer;
+    bool VF;
 
     void initialize();
     void emulate();

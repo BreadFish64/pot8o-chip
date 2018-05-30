@@ -2,10 +2,11 @@
 #include <istream>
 #include <vector>
 #include "chip8.h"
+#include "keypad.h"
+#include "render.h"
 
-Chip8::Chip8(std::queue<std::array<std::array<bool, 64>, 32>>& buffer,
-             std::timed_mutex& buffer_mutex)
-    : buffer(buffer), buffer_mutex(buffer_mutex) {
+Chip8::Chip8(Render* render) : render(render) {
+    keypad = new Keypad;
     initialize();
     loadGame("meep");
     emulate();
@@ -17,11 +18,10 @@ void Chip8::initialize() {
     opcode = 0; // Reset current opcode
     I = 0;      // Reset index register
     sp = 0;     // Reset stack pointer
+    VF = false;
 
-    for (auto& row : gfx) {
-        for (bool& column : row) {
-            column = false;
-        }
+    for (auto& pixel : gfx) {
+        pixel = false;
     } // Clear display
     for (auto& addr : stack) {
         addr = 0;
@@ -49,17 +49,14 @@ void Chip8::emulate() {
 void Chip8::emulateCycle() {
     // Fetch Opcode
     opcode = memory[pc] << 8 | memory[pc + 1];
-
     // Decode Opcode
     // Execute Opcode
     switch (opcode & 0xF000) {
     case 0x0000:
         switch (opcode & 0x00FF) {
         case 0x00E0:
-            for (auto& row : gfx) {
-                for (bool& column : row) {
-                    column = false;
-                }
+            for (auto& pixel : gfx) {
+                pixel = false;
             }
             break;
 
@@ -80,11 +77,16 @@ void Chip8::emulateCycle() {
     case 0x2000:
         sp++;
         stack[sp] = pc;
-        pc = opcode & 0x0FFF;
+        pc = (opcode & 0x0FFF) - 2;
         break;
 
     case 0x3000:
         if (V[(opcode & 0x0F00) >> 8] == (opcode & 0x00FF))
+            pc += 2;
+        break;
+
+    case 0x4000:
+        if (V[(opcode & 0x0F00) >> 8] != (opcode & 0x00FF))
             pc += 2;
         break;
 
@@ -102,8 +104,24 @@ void Chip8::emulateCycle() {
             V[(opcode & 0x0F00) >> 8] = V[(opcode & 0x00F0) >> 4];
             break;
 
+        case 0x0003:
+            V[(opcode & 0x0F00) >> 8] = V[(opcode & 0x0F00) >> 8] ^ V[(opcode & 0x00F0) >> 4];
+            break;
+
+        case 0x0004: {
+            unsigned short result = V[(opcode & 0x0F00) >> 8] + V[(opcode & 0x00F0) >> 4];
+            VF = result > 0xFF;
+            V[(opcode & 0x0F00) >> 8] = result;
+            break;
+        }
+        case 0x000E:
+            VF = (V[(opcode & 0x0F00) >> 8] & 0b1000000) == 0b1000000;
+            V[(opcode & 0x0F00) >> 8] *= 2;
+            break;
+
         default:
             printf("Unknown opcode [0x0000]: 0x%X\n", opcode);
+            break;
         }
         break;
 
@@ -124,23 +142,35 @@ void Chip8::emulateCycle() {
         for (unsigned char row = 0; row < height; row++) {
             unsigned char byte = memory[I + row];
             for (char i = 8; i >= 0; i--) {
-                bool pixel = gfx[y + row][x - i];
-                gfx[y + row][x - i] = ((byte & power(2, i)) >> i) ^ pixel;
+                bool pixel = gfx[(y + row) * 64 + (x - i)];
+                gfx[(y + row) * 64 + (x - i)] = ((byte & power(2, i)) >> i) ^ pixel;
             }
         }
 
-        buffer.push(gfx);
+        render->drawGraphics(gfx);
         break;
     }
 
     case 0xF000:
         switch (opcode & 0x00FF) {
+        case 0x0007:
+            V[(opcode & 0x0F00) >> 8] = delay_timer;
+            break;
+
         case 0x000A:
-            V[(opcode & 0x0F00) >> 8] = keypad.waitForInput();
+            V[(opcode & 0x0F00) >> 8] = keypad->waitForInput();
             break;
 
         case 0x0015:
             delay_timer = V[(opcode & 0x0F00) >> 8];
+            break;
+
+        case 0x0018:
+            sound_timer = V[(opcode & 0x0F00) >> 8];
+            break;
+
+        case 0x001E:
+            I += V[(opcode & 0x0F00) >> 8];
             break;
 
         case 0x0029:
@@ -160,24 +190,26 @@ void Chip8::emulateCycle() {
             break;
         }
         case 0x0055:
-            for (int i = 0; i < V.size(); i++) {
+            for (int i = 0; i <= (opcode & 0x0F00) >> 8; i++) {
                 memory[I + i] = V[i];
             }
             break;
 
         case 0x0065:
-            for (int i = 0; i < V.size(); i++) {
+            for (int i = 0; i <= (opcode & 0x0F00) >> 8; i++) {
                 V[i] = memory[I + i];
             }
             break;
 
         default:
             printf("Unknown opcode [0x0000]: 0x%X\n", opcode);
+            break;
         }
         break;
 
     default:
         printf("Unknown opcode: 0x%X\n", opcode);
+        break;
     }
 
     pc += 2;
@@ -194,7 +226,7 @@ void Chip8::emulateCycle() {
 }
 
 void Chip8::loadGame(std::string path) {
-    path = "F:/git/chip8/TICTAC";
+    path = "F:/git/chip8/PONG";
     std::ifstream file(path, std::ios::binary);
     file.seekg(0, file.end);
     int length = file.tellg();
@@ -207,7 +239,7 @@ void Chip8::loadGame(std::string path) {
         memory[i + 512] = buffer[i];
 }
 
-const std::array<unsigned char, 0x50> Chip8::font = {
+const std::array<unsigned char, 0x50> Chip8::font{
     // clang-format off
 	//0
 	0b11110000,

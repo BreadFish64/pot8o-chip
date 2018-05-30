@@ -11,18 +11,9 @@ int main(int argc, char* argv[]) {
     std::queue<std::array<std::array<bool, 64>, 32>> buffer;
     std::timed_mutex buffer_mutex;
 
-    bool start;
-    std::thread jim([&] {
-        Render render(buffer, buffer_mutex);
-        start = true;
-        render.run();
-    });
+    Render* render = new Render();
 
-    while (!start) {
-        ;
-    }
-
-    Chip8 chip8(buffer, buffer_mutex);
+    Chip8 chip8(render);
 
     return 0;
 }
