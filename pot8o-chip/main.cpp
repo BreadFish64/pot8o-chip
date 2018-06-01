@@ -8,12 +8,7 @@
 int main(int argc, char* argv[]) {
     SDL_Init(SDL_INIT_EVERYTHING);
 
-    std::queue<std::array<std::array<bool, 64>, 32>> buffer;
-    std::timed_mutex buffer_mutex;
-
-    Render* render = new Render();
-
-    Chip8 chip8(render);
+    Chip8 chip8;
 
     return 0;
 }

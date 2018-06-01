@@ -5,20 +5,14 @@
 Render::Render() {
     window =
         SDL_CreateWindow("Game", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 512, 256, 0);
-    // SDL_SetWindowResizable(window, SDL_TRUE);
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     SDL_RenderSetScale(renderer, 8, 8);
     texture =
-        SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 64, 32);
+        SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA4444, SDL_TEXTUREACCESS_STREAMING, 64, 32);
 }
 
-void Render::drawGraphics(std::array<bool, 64 * 32> frame) {
-    std::array<int, 64 * 32> pixels;
-    for (int i = 0; i < frame.size(); i++) {
-        pixels[i] = frame[i] ? 0x00000000 : 0xFFFFFFFF;
-    }
-
-    SDL_UpdateTexture(texture, NULL, &pixels, 256);
+void Render::drawGraphics(std::array<unsigned short, 64 * 32> frame) {
+    SDL_UpdateTexture(texture, NULL, &frame, 128);
     SDL_RenderCopy(renderer, texture, NULL, NULL);
     SDL_RenderPresent(renderer);
 }

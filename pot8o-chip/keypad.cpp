@@ -1,27 +1,42 @@
+#include <algorithm>
 #include <SDL.h>
 #include "keypad.h"
 
-Keypad::Keypad() {}
+Keypad::Keypad() {
+    keyboard_state = SDL_GetKeyboardState(nullptr);
+    // for (unsigned char i = 0; i < keypad_state.size(); i++)
+    //    keypad_state[i] = &keyboard_state[keys[i]];
+}
 
 Keypad::~Keypad(){};
 
-unsigned char Keypad::waitForInput() {
-    int* numkeys = nullptr;
-    const unsigned char* state;
+/*void Keypad::updateLoop() {
     SDL_Event Event;
-
-    SDL_FlushEvents(SDL_KEYDOWN, SDL_KEYUP);
     while (true) {
-        if (SDL_PollEvent(&Event) == 1) {
-            state = SDL_GetKeyboardState(numkeys);
+        if (!waiting) {
+            SDL_PumpEvents();
             for (char i = 0; i < 0x10; i++) {
                 unsigned char key_num = static_cast<unsigned char>(keys[i]);
-                bool is = state[key_num];
-                if (is)
-                    return i;
+                keypad_state[i] = keyboard_state[key_num];
             }
         }
     }
+};*/
+
+unsigned char Keypad::waitForInput() {
+    while (SDL_PollEvent(nullptr)) {
+        for (unsigned char i = 0; i < keys.size(); i++) {
+            if (keyboard_state[keys[i]])
+                return i;
+        }
+    }
+    return 0x10;
+}
+
+bool Keypad::keyIsPressed(unsigned char key) {
+    SDL_PollEvent(nullptr);
+
+    return keyboard_state[keys[key]];
 }
 
 const std::array<SDL_Scancode, 0x10> Keypad::keys{
