@@ -133,13 +133,13 @@ void Chip8::emulateCycle() {
             break;
         }
         case 0x0006:
-            V[0xF] = (V[(opcode & 0x0F00) >> 8] & 0b1000000) == 0b1000000;
-            V[(opcode & 0x0F00) >> 8] *= 2;
+            V[0xF] = (V[(opcode & 0x0F00) >> 8] & 0b0000001) == 0b0000001;
+            V[(opcode & 0x0F00) >> 8] >>= 1;
             break;
 
         case 0x000E:
-            V[0xF] = (V[(opcode & 0x0F00) >> 8] & 0b0000001) == 0b0000001;
-            V[(opcode & 0x0F00) >> 8] /= 2;
+            V[0xF] = (V[(opcode & 0x0F00) >> 8] & 0b1000000) == 0b1000000;
+            V[(opcode & 0x0F00) >> 8] <<= 1;
             break;
 
         default:
@@ -173,11 +173,12 @@ void Chip8::emulateCycle() {
         for (unsigned char row = 0; row < height; row++) {
             unsigned char byte = memory[I + row];
             for (char i = 0; i < 8; i++) {
-                unsigned short pixel = gfx[(y + row) * 64 + (x + i)];
-                gfx[(y + row) * 64 + (x + i)] =
-                    (static_cast<bool>(((byte & power(2, i)) >> i)) ? 0xFFFF : 0x0000) ^ pixel;
-                if (gfx[(y + row) * 64 + (x + i)] != pixel)
+                unsigned short& pixel = gfx[((y + row) % 32) * 64 + (x + i) % 64];
+                bool flip = byte & (1 << i);
+                if (pixel && flip)
                     V[0xF] = true;
+                if (flip)
+                    pixel = ~pixel;
             }
         }
 
@@ -275,15 +276,8 @@ void Chip8::emulateCycle() {
 void Chip8::loadGame(std::string path) {
     path = "F:/git/chip8/TICTAC";
     std::ifstream file(path, std::ios::binary);
-    file.seekg(0, file.end);
-    int length = file.tellg();
-    file.seekg(0, file.beg);
-
-    char* buffer = new char[length];
-    file.read(buffer, length);
-
-    for (int i = 0; i < length; ++i)
-        memory[i + 512] = buffer[i];
+    std::copy(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>(),
+              memory.begin() + 512);
 }
 
 const std::array<unsigned char, 0x50> Chip8::font{
