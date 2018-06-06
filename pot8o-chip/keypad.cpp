@@ -4,24 +4,9 @@
 
 Keypad::Keypad() {
     keyboard_state = SDL_GetKeyboardState(nullptr);
-    // for (unsigned char i = 0; i < keypad_state.size(); i++)
-    //    keypad_state[i] = &keyboard_state[keys[i]];
 }
 
 Keypad::~Keypad(){};
-
-/*void Keypad::updateLoop() {
-    SDL_Event Event;
-    while (true) {
-        if (!waiting) {
-            SDL_PumpEvents();
-            for (char i = 0; i < 0x10; i++) {
-                unsigned char key_num = static_cast<unsigned char>(keys[i]);
-                keypad_state[i] = keyboard_state[key_num];
-            }
-        }
-    }
-};*/
 
 unsigned char Keypad::waitForInput() {
     while (SDL_PollEvent(nullptr)) {
@@ -30,7 +15,7 @@ unsigned char Keypad::waitForInput() {
                 return i;
         }
     }
-    return 0x10;
+    exit(1);
 }
 
 bool Keypad::keyIsPressed(unsigned char key) {

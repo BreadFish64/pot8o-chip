@@ -10,7 +10,7 @@ struct SDL_Window;
 class Render {
 public:
     explicit Render();
-    void drawGraphics(std::array<unsigned short, 64 * 32> frame);
+    void drawGraphics(std::array<unsigned short, 64 * 32>& frame);
 
 private:
     SDL_Window* window = nullptr;

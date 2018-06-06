@@ -1,3 +1,4 @@
+#include <execution>
 #include <fstream>
 #include <istream>
 #include <random>
@@ -17,31 +18,18 @@ Chip8::Chip8() {
 }
 
 void Chip8::initialize() {
-    // Initialize registers and memory once
-    pc = 0x200; // Program counter starts at 0x200
-    opcode = 0; // Reset current opcode
-    I = 0;      // Reset index register
-    sp = 0;     // Reset stack pointer
-    V[0xF] = false;
+    pc = 0x200;
+    opcode = 0;
+    I = 0;
+    sp = 0;
 
-    for (auto& pixel : gfx) {
-        pixel = false;
-    } // Clear display
-    for (auto& addr : stack) {
-        addr = 0;
-    } // Clear stack
-    for (auto& reg : V) {
-        reg = 0;
-    } // Clear registers V0-VF
-    for (auto& byte : memory) {
-        byte = 0;
-    } // Clear memory
+    std::fill(gfx.begin(), gfx.end(), 0);
+    std::fill(stack.begin(), stack.end(), 0);
+    std::fill(V.begin(), V.end(), 0);
+    std::fill(memory.begin(), memory.end(), 0);
 
-    // Load fontset
-    for (int i = 0; i < 0x50; ++i)
-        memory[i] = font[i];
+    std::copy(font.begin(), font.end(), memory.begin());
 
-    // Reset timers
     delay_timer = 0;
     sound_timer = 0;
 }
@@ -50,22 +38,18 @@ void Chip8::emulate() {
     while (true) {
         frame_start = std::chrono::steady_clock::now();
         emulateCycle();
-        std::this_thread::sleep_until(frame_start + 16.7ms);
+        // std::this_thread::sleep_until(frame_start + 1ms);
     }
 }
 
 void Chip8::emulateCycle() {
-    // Fetch Opcode
     opcode = memory[pc] << 8 | memory[pc + 1];
-    // Decode Opcode
-    // Execute Opcode
+
     switch (opcode & 0xF000) {
     case 0x0000:
         switch (opcode & 0x00FF) {
         case 0x00E0:
-            for (auto& pixel : gfx) {
-                pixel = false;
-            }
+            std::fill(gfx.begin(), gfx.end(), 0);
             break;
 
         case 0x00EE:
@@ -99,7 +83,7 @@ void Chip8::emulateCycle() {
         break;
 
     case 0x6000:
-        V[(opcode & 0x0F00) >> 8] = opcode & 0x00FF;
+        V[(opcode & 0x0F00) >> 8] = (opcode & 0x00FF);
         break;
 
     case 0x7000:
@@ -112,8 +96,11 @@ void Chip8::emulateCycle() {
             V[(opcode & 0x0F00) >> 8] = V[(opcode & 0x00F0) >> 4];
             break;
 
+        case 0x0001:
+            V[(opcode & 0x0F00) >> 8] |= V[(opcode & 0x00F0) >> 4];
+
         case 0x0002:
-            V[(opcode & 0x0F00) >> 8] = V[(opcode & 0x0F00) >> 8] & V[(opcode & 0x00F0) >> 4];
+            V[(opcode & 0x0F00) >> 8] &= V[(opcode & 0x00F0) >> 4];
             break;
 
         case 0x0003:
@@ -157,15 +144,11 @@ void Chip8::emulateCycle() {
         I = opcode & 0x0FFF;
         break;
     case 0xC000: {
-        std::random_device seeder;
-        std::mt19937 engine(seeder());
-        std::uniform_int_distribution<int> dist(CHAR_MIN, CHAR_MAX);
-        unsigned char rand_num = dist(engine);
-        V[(opcode & 0x0F00 >> 8)] = (opcode & 0x00FF) & rand_num;
+        V[(opcode & 0x0F00) >> 8] = rand() & (opcode & 0x00FF);
         break;
     }
     case 0xD000: {
-        unsigned char x = V[(opcode & 0x0F00) >> 8];
+        unsigned char x = V[(opcode & 0x0F00) >> 8] + 8;
         unsigned char height = opcode & 0x000F;
         unsigned char y = V[(opcode & 0x00F0) >> 4];
         V[0xF] = false;
@@ -173,7 +156,7 @@ void Chip8::emulateCycle() {
         for (unsigned char row = 0; row < height; row++) {
             unsigned char byte = memory[I + row];
             for (char i = 0; i < 8; i++) {
-                unsigned short& pixel = gfx[((y + row) % 32) * 64 + (x + i) % 64];
+                unsigned short& pixel = gfx[((y + row) % 32) * 64 + (x - i - 1) % 64];
                 bool flip = byte & (1 << i);
                 if (pixel && flip)
                     V[0xF] = true;
@@ -222,15 +205,15 @@ void Chip8::emulateCycle() {
             break;
 
         case 0x0029:
-            I = V[(opcode & 0x0F00) >> 8];
+            I = V[(opcode & 0x0F00) >> 8] * 5;
             break;
 
         case 0x0033: {
             unsigned char num = V[(opcode & 0x0F00) >> 8];
             unsigned char cent = num / 100;
-            num -= cent;
+            num %= 100;
             unsigned char dec = num / 10;
-            num -= dec;
+            num %= 10;
             unsigned char unit = num;
             memory[I] = cent;
             memory[I + 1] = dec;
@@ -238,15 +221,13 @@ void Chip8::emulateCycle() {
             break;
         }
         case 0x0055:
-            for (int i = 0; i <= (opcode & 0x0F00) >> 8; i++) {
-                memory[I + i] = V[i];
-            }
+            std::copy_n(std::execution::par_unseq, V.begin(), ((opcode & 0x0F00) >> 8) + 1,
+                        memory.begin() + I);
             break;
 
         case 0x0065:
-            for (int i = 0; i <= (opcode & 0x0F00) >> 8; i++) {
-                V[i] = memory[I + i];
-            }
+            std::copy_n(std::execution::par_unseq, memory.begin() + I, ((opcode & 0x0F00) >> 8) + 1,
+                        V.begin());
             break;
 
         default:
@@ -274,7 +255,7 @@ void Chip8::emulateCycle() {
 }
 
 void Chip8::loadGame(std::string path) {
-    path = "F:/git/chip8/TICTAC";
+    path = "F:/git/chip8/MAZE";
     std::ifstream file(path, std::ios::binary);
     std::copy(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>(),
               memory.begin() + 512);
