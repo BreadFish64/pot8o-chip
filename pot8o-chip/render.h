@@ -1,7 +1,6 @@
 #pragma once
 #include <array>
-#include <mutex>
-#include <queue>
+#include <memory>
 
 struct SDL_Renderer;
 struct SDL_Texture;
@@ -10,6 +9,8 @@ struct SDL_Window;
 class Render {
 public:
     explicit Render();
+    ~Render() = default;
+
     void drawGraphics(std::array<unsigned short, 64 * 32>& frame);
 
 private:

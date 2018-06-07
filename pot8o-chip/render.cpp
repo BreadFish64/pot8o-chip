@@ -1,4 +1,3 @@
-#include <chrono>
 #include <SDL.h>
 #include "render.h"
 

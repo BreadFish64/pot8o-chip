@@ -1,8 +1,9 @@
 #include <execution>
 #include <fstream>
+
 #include <istream>
-#include <random>
-#include <vector>
+
+//#include <vector>
 #include "chip8.h"
 #include "keypad.h"
 #include "render.h"
@@ -11,11 +12,117 @@ using namespace std::chrono_literals;
 
 Chip8::Chip8() {
     keypad = new Keypad();
-    render = new Render();
+    render = std::make_unique<Render>();
+    cpu = std::make_unique<CPU>(this);
+
+    rng.seed(std::random_device()());
+    dist = std::make_unique<std::uniform_int_distribution<std::mt19937::result_type>>(0x00, 0xFF);
+
     initialize();
     loadGame("meep");
     emulate();
 }
+
+const std::array<unsigned char, 0x50> Chip8::font{
+    // clang-format off
+	//0
+	0b11110000,
+	0b10010000,
+	0b10010000,
+	0b10010000,
+	0b11110000,
+	//1
+	0b00100000,
+	0b01100000,
+	0b00100000,
+	0b00100000,
+	0b01110000,
+	//2
+	0b11110000,
+	0b00010000,
+	0b11110000,
+	0b10000000,
+	0b11110000,
+	//3
+	0b11110000,
+	0b00010000,
+	0b11110000,
+	0b00010000,
+	0b11110000,
+	//4
+	0b10010000,
+	0b10010000,
+	0b11110000,
+	0b00010000,
+	0b00010000,
+	//5
+	0b11110000,
+	0b10000000,
+	0b11110000,
+	0b00010000,
+	0b11110000,
+	//6
+	0b11110000,
+	0b10000000,
+	0b11110000,
+	0b10010000,
+	0b11110000,
+	//7
+	0b11110000,
+	0b00010000,
+	0b00100000,
+	0b01000000,
+	0b01000000,
+	//8
+	0b11110000,
+	0b10010000,
+	0b11110000,
+	0b10010000,
+	0b11110000,
+	//9
+	0b11110000,
+	0b10010000,
+	0b11110000,
+	0b00010000,
+	0b11110000,
+	//A
+	0b11110000,
+	0b10010000,
+	0b11110000,
+	0b10010000,
+	0b10010000,
+	//B
+	0b11100000,
+	0b10010000,
+	0b11100000,
+	0b10010000,
+	0b11100000,
+	//C
+	0b11110000,
+	0b10000000,
+	0b10000000,
+	0b10000000,
+	0b11110000,
+	//D
+	0b11100000,
+	0b10010000,
+	0b10010000,
+	0b10010000,
+	0b11100000,
+	//E
+	0b11110000,
+	0b10000000,
+	0b11110000,
+	0b10000000,
+	0b11110000,
+	//F
+	0b11110000,
+	0b10000000,
+	0b11110000,
+	0b10000000,
+	0b10000000,
+    // clang-format on
+};
 
 void Chip8::initialize() {
     pc = 0x200;
@@ -34,11 +141,18 @@ void Chip8::initialize() {
     sound_timer = 0;
 }
 
+void Chip8::loadGame(std::string path) {
+    path = "F:/git/chip8/TANK";
+    std::ifstream file(path, std::ios::binary);
+    std::copy(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>(),
+              memory.begin() + 0x200);
+}
+
 void Chip8::emulate() {
     while (true) {
         frame_start = std::chrono::steady_clock::now();
         emulateCycle();
-        // std::this_thread::sleep_until(frame_start + 1ms);
+        std::this_thread::sleep_until(frame_start + 1ms);
     }
 }
 
@@ -243,7 +357,6 @@ void Chip8::emulateCycle() {
 
     pc += 2;
 
-    // Update timers
     if (delay_timer > 0)
         --delay_timer;
 
@@ -254,118 +367,330 @@ void Chip8::emulateCycle() {
     }
 }
 
-void Chip8::loadGame(std::string path) {
-    path = "F:/git/chip8/MAZE";
-    std::ifstream file(path, std::ios::binary);
-    std::copy(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>(),
-              memory.begin() + 512);
+inline unsigned char& Chip8::Vx() {
+    return V[(opcode & 0x0F00) >> 8];
 }
 
-const std::array<unsigned char, 0x50> Chip8::font{
+inline unsigned char& Chip8::Vy() {
+    return V[(opcode & 0x00F0) >> 4];
+}
+
+inline unsigned char Chip8::kk() {
+    return opcode & 0x00FF;
+}
+
+inline unsigned short Chip8::nnn() {
+    return opcode & 0x0FFF;
+}
+
+inline unsigned char Chip8::n() {
+    return opcode & 0x000F;
+}
+
+Chip8::CPU::CPU(Chip8* parent) : sys(parent) {
     // clang-format off
-	//0
-	0b11110000,
-	0b10010000,
-	0b10010000,
-	0b10010000,
-	0b11110000,
-	//1
-	0b00100000,
-	0b01100000,
-	0b00100000,
-	0b00100000,
-	0b01110000,
-	//2
-	0b11110000,
-	0b00010000,
-	0b11110000,
-	0b10000000,
-	0b11110000,
-	//3
-	0b11110000,
-	0b00010000,
-	0b11110000,
-	0b00010000,
-	0b11110000,
-	//4
-	0b10010000,
-	0b10010000,
-	0b11110000,
-	0b00010000,
-	0b00010000,
-	//5
-	0b11110000,
-	0b10000000,
-	0b11110000,
-	0b00010000,
-	0b11110000,
-	//6
-	0b11110000,
-	0b10000000,
-	0b11110000,
-	0b10010000,
-	0b11110000,
-	//7
-	0b11110000,
-	0b00010000,
-	0b00100000,
-	0b01000000,
-	0b01000000,
-	//8
-	0b11110000,
-	0b10010000,
-	0b11110000,
-	0b10010000,
-	0b11110000,
-	//9
-	0b11110000,
-	0b10010000,
-	0b11110000,
-	0b00010000,
-	0b11110000,
-	//A
-	0b11110000,
-	0b10010000,
-	0b11110000,
-	0b10010000,
-	0b10010000,
-	//B
-	0b11100000,
-	0b10010000,
-	0b11100000,
-	0b10010000,
-	0b11100000,
-	//C
-	0b11110000,
-	0b10000000,
-	0b10000000,
-	0b10000000,
-	0b11110000,
-	//D
-	0b11100000,
-	0b10010000,
-	0b10010000,
-	0b10010000,
-	0b11100000,
-	//E
-	0b11110000,
-	0b10000000,
-	0b11110000,
-	0b10000000,
-	0b11110000,
-	//F
-	0b11110000,
-	0b10000000,
-	0b11110000,
-	0b10000000,
-	0b10000000,
-    // clang-format on
+    opcode_table = std::array<std::function<void(Chip8::CPU::*)()>, 0x10> {
+    &LD_B_Vx, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr
+    };
+
+/*const std::array<std::function<void(Chip8::CPU::*)()>, 0x100> Chip8::CPU::opcode_table_0 {
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 };
 
-int power(int base, int exponent) {
-    int result = 1;
-    for (int i = 0; i < exponent; i++) {
-        result = result * base;
+const std::array<std::function<void(Chip8::CPU::*)()>, 0x10> Chip8::CPU::opcode_table_8 {
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr
+};
+
+const std::array<std::function<void(Chip8::CPU::*)()>, 0x100> Chip8::CPU::opcode_table_E {
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+};
+
+const std::array<std::function<void(Chip8::CPU::*)()>, 0x100> Chip8::CPU::opcode_table_F {
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+};*/
+    // clang-format on
+}
+
+// void Chip8::CPU::split_0() {}
+
+void Chip8::CPU::CLS() {
+    std::fill(sys->gfx.begin(), sys->gfx.end(), 0);
+    sys->pc += 2;
+}
+
+void Chip8::CPU::RET() {
+    sys->pc = sys->stack[sys->sp];
+    sys->sp--;
+}
+
+void Chip8::CPU::JP_addr() {
+    sys->I = sys->nnn();
+}
+
+void Chip8::CPU::CALL_addr() {
+    sys->stack[sys->sp++] = sys->pc;
+    sys->pc = sys->nnn();
+}
+
+void Chip8::CPU::SE_Vx_byte() {
+    sys += sys->Vx() == sys->kk() ? 4 : 2;
+}
+
+void Chip8::CPU::SNE_Vx_byte() {
+    sys += sys->Vx() != sys->kk() ? 4 : 2;
+}
+
+void Chip8::CPU::SE_Vx_Vy() {
+    sys += sys->Vx() == sys->Vy() ? 4 : 2;
+}
+
+void Chip8::CPU::LD_Vx_byte() {
+    sys->Vx() = sys->kk();
+    sys->pc += 2;
+}
+
+void Chip8::CPU::ADD_Vx_byte() {
+    sys->Vx() += sys->kk();
+    sys->pc += 2;
+}
+
+// void Chip8::CPU::split_8() {}
+
+void Chip8::CPU::LD_Vx_Vy() {
+    sys->Vx() = sys->Vy();
+    sys->pc += 2;
+}
+
+void Chip8::CPU::OR_Vx_Vy() {
+    sys->Vx() |= sys->Vy();
+    sys->pc += 2;
+}
+
+void Chip8::CPU::AND_Vx_Vy() {
+    sys->Vx() &= sys->Vy();
+    sys->pc += 2;
+}
+
+void Chip8::CPU::XOR_Vx_Vy() {
+    sys->Vx() ^= sys->Vy();
+    sys->pc += 2;
+}
+
+void Chip8::CPU::ADD_Vx_Vy() {
+    unsigned short result = sys->Vx() + sys->Vy();
+    sys->V[0xF] = result > 0xFF;
+    sys->Vx() = static_cast<unsigned char>(result & 0xFF);
+    sys->pc += 2;
+}
+
+void Chip8::CPU::SUB_Vx_Vy() {
+    sys->V[0xF] = sys->Vx() > sys->Vy();
+    sys->Vx() -= sys->Vy();
+    sys->pc += 2;
+}
+
+void Chip8::CPU::SHR_Vx() {
+    sys->V[0xF] = sys->Vx() & 0b0000001;
+    sys->Vx() >>= 1;
+    sys->pc += 2;
+}
+
+void Chip8::CPU::SUBN_Vy_Vx() {
+    sys->V[0xF] = sys->Vy() > sys->Vx();
+    sys->Vx() = sys->Vy() - sys->Vx();
+    sys->pc += 2;
+}
+
+void Chip8::CPU::SHL_Vx() {
+    sys->V[0xF] = sys->Vx() & 0b1000000;
+    sys->Vx() <<= 1;
+    sys->pc += 2;
+}
+
+void Chip8::CPU::SNE_Vx_Vy() {
+    sys += sys->Vx() != sys->Vy() ? 4 : 2;
+}
+
+void Chip8::CPU::LD_I_addr() {
+    sys->I = sys->nnn();
+    sys->pc += 2;
+}
+
+void Chip8::CPU::JP_0_addr() {
+    sys->pc = sys->nnn() + sys->V[0x0];
+}
+
+void Chip8::CPU::RND_Vx_byte() {
+    sys->Vx() = sys->dist.get()->operator()(sys->rng) & sys->kk();
+}
+
+void Chip8::CPU::DRW_Vx_Vy_nibble() {
+    unsigned char x = sys->Vx() + 8;
+    unsigned char height = sys->n();
+    unsigned char y = sys->Vy();
+    sys->V[0xF] = false;
+
+    for (unsigned char row = 0; row < height; row++) {
+        unsigned char byte = sys->memory[sys->I + row];
+        for (char i = 0; i < 8; i++) {
+            unsigned short& pixel = sys->gfx[((y + row) % 32) * 64 + (x - i - 1) % 64];
+            bool flip = byte & (1 << i);
+            if (pixel && flip)
+                sys->V[0xF] = true;
+            if (flip)
+                pixel = ~pixel;
+        }
     }
-    return result;
+
+    sys->render->drawGraphics(sys->gfx);
+}
+
+// void Chip8::CPU::split_E() {}
+
+void Chip8::CPU::SKP_Vx() {
+    sys->pc += sys->keypad->keyIsPressed(sys->Vx()) ? 4 : 2;
+}
+
+void Chip8::CPU::SKNP_Vx() {
+    sys->pc += sys->keypad->keyIsPressed(sys->Vx()) ? 2 : 4;
+}
+
+// void Chip8::CPU::split_F() {}
+
+void Chip8::CPU::LD_Vx_DT() {
+    sys->Vx() = sys->delay_timer;
+}
+
+void Chip8::CPU::LD_Vx_K() {
+    sys->Vx() = sys->keypad->waitForInput();
+}
+
+void Chip8::CPU::LD_DT_Vx() {
+    sys->delay_timer = sys->Vx();
+}
+
+void Chip8::CPU::LD_ST_Vx() {
+    sys->sound_timer = sys->Vx();
+}
+
+void Chip8::CPU::ADD_I_Vx() {
+    sys->I += sys->Vx();
+}
+
+void Chip8::CPU::LD_F_Vx() {
+    sys->I = sys->Vx() * 5;
+}
+
+void Chip8::CPU::LD_B_Vx() {
+    unsigned char num = sys->Vx();
+    sys->memory[sys->I] = num / 100;
+    num %= 100;
+    sys->memory[sys->I + 1] = num / 10;
+    num %= 10;
+    sys->memory[sys->I + 2] = num;
+}
+
+void Chip8::CPU::LD_I_Vx() {
+    std::copy_n(std::execution::par_unseq, sys->V.begin(), sys->Vx() + 1,
+                sys->memory.begin() + sys->I);
+}
+
+void Chip8::CPU::LD_Vx_I() {
+    std::copy_n(std::execution::par_unseq, sys->memory.begin() + sys->I, sys->Vx() + 1,
+                sys->V.begin());
 }

@@ -3,15 +3,13 @@
 #include "keypad.h"
 
 Keypad::Keypad() {
-    keyboard_state = SDL_GetKeyboardState(nullptr);
+    keyboard_state.reset(SDL_GetKeyboardState(nullptr));
 }
-
-Keypad::~Keypad(){};
 
 unsigned char Keypad::waitForInput() {
     while (SDL_PollEvent(nullptr)) {
         for (unsigned char i = 0; i < keys.size(); i++) {
-            if (keyboard_state[keys[i]])
+            if (keyboard_state.get()[keys[i]])
                 return i;
         }
     }
@@ -21,7 +19,7 @@ unsigned char Keypad::waitForInput() {
 bool Keypad::keyIsPressed(unsigned char key) {
     SDL_PollEvent(nullptr);
 
-    return keyboard_state[keys[key]];
+    return keyboard_state.get()[keys[key]];
 }
 
 const std::array<SDL_Scancode, 0x10> Keypad::keys{
