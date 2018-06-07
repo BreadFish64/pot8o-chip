@@ -390,7 +390,7 @@ inline unsigned char Chip8::n() {
 Chip8::CPU::CPU(Chip8* parent) : sys(parent) {
     // clang-format off
     opcode_table = std::array<std::function<void(Chip8::CPU::*)()>, 0x10> {
-    &LD_B_Vx, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+    &split_0, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
 	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr
     };
 
@@ -506,7 +506,7 @@ const std::array<std::function<void(Chip8::CPU::*)()>, 0x100> Chip8::CPU::opcode
     // clang-format on
 }
 
-// void Chip8::CPU::split_0() {}
+void Chip8::CPU::split_0() {}
 
 void Chip8::CPU::CLS() {
     std::fill(sys->gfx.begin(), sys->gfx.end(), 0);
