@@ -23,107 +23,6 @@ Chip8::Chip8() {
     emulate();
 }
 
-const std::array<unsigned char, 0x50> Chip8::font{
-    // clang-format off
-	//0
-	0b11110000,
-	0b10010000,
-	0b10010000,
-	0b10010000,
-	0b11110000,
-	//1
-	0b00100000,
-	0b01100000,
-	0b00100000,
-	0b00100000,
-	0b01110000,
-	//2
-	0b11110000,
-	0b00010000,
-	0b11110000,
-	0b10000000,
-	0b11110000,
-	//3
-	0b11110000,
-	0b00010000,
-	0b11110000,
-	0b00010000,
-	0b11110000,
-	//4
-	0b10010000,
-	0b10010000,
-	0b11110000,
-	0b00010000,
-	0b00010000,
-	//5
-	0b11110000,
-	0b10000000,
-	0b11110000,
-	0b00010000,
-	0b11110000,
-	//6
-	0b11110000,
-	0b10000000,
-	0b11110000,
-	0b10010000,
-	0b11110000,
-	//7
-	0b11110000,
-	0b00010000,
-	0b00100000,
-	0b01000000,
-	0b01000000,
-	//8
-	0b11110000,
-	0b10010000,
-	0b11110000,
-	0b10010000,
-	0b11110000,
-	//9
-	0b11110000,
-	0b10010000,
-	0b11110000,
-	0b00010000,
-	0b11110000,
-	//A
-	0b11110000,
-	0b10010000,
-	0b11110000,
-	0b10010000,
-	0b10010000,
-	//B
-	0b11100000,
-	0b10010000,
-	0b11100000,
-	0b10010000,
-	0b11100000,
-	//C
-	0b11110000,
-	0b10000000,
-	0b10000000,
-	0b10000000,
-	0b11110000,
-	//D
-	0b11100000,
-	0b10010000,
-	0b10010000,
-	0b10010000,
-	0b11100000,
-	//E
-	0b11110000,
-	0b10000000,
-	0b11110000,
-	0b10000000,
-	0b11110000,
-	//F
-	0b11110000,
-	0b10000000,
-	0b11110000,
-	0b10000000,
-	0b10000000,
-    // clang-format on
-};
-
 void Chip8::initialize() {
     pc = 0x200;
     opcode = 0;
@@ -152,14 +51,15 @@ void Chip8::emulate() {
     while (true) {
         frame_start = std::chrono::steady_clock::now();
         emulateCycle();
-        std::this_thread::sleep_until(frame_start + 1ms);
+        // std::this_thread::sleep_until(frame_start + 1ms);
     }
 }
 
 void Chip8::emulateCycle() {
     opcode = memory[pc] << 8 | memory[pc + 1];
+    CPU::opcode_table[op()](*cpu.get());
 
-    switch (opcode & 0xF000) {
+    /*switch (opcode & 0xF000) {
     case 0x0000:
         switch (opcode & 0x00FF) {
         case 0x00E0:
@@ -353,9 +253,7 @@ void Chip8::emulateCycle() {
     default:
         printf("Unknown opcode: 0x%X\n", opcode);
         break;
-    }
-
-    pc += 2;
+    }*/
 
     if (delay_timer > 0)
         --delay_timer;
@@ -367,12 +265,28 @@ void Chip8::emulateCycle() {
     }
 }
 
+inline unsigned char Chip8::op() {
+    return (opcode & 0xF000) >> 12;
+}
+
+inline unsigned char Chip8::X() {
+    return (opcode & 0x0F00) >> 8;
+}
+
+inline unsigned char Chip8::Y() {
+    return (opcode & 0x00F0) >> 4;
+}
+
 inline unsigned char& Chip8::Vx() {
-    return V[(opcode & 0x0F00) >> 8];
+    return V[X()];
 }
 
 inline unsigned char& Chip8::Vy() {
-    return V[(opcode & 0x00F0) >> 4];
+    return V[Y()];
+}
+
+inline unsigned char Chip8::n() {
+    return opcode & 0x000F;
 }
 
 inline unsigned char Chip8::kk() {
@@ -383,130 +297,11 @@ inline unsigned short Chip8::nnn() {
     return opcode & 0x0FFF;
 }
 
-inline unsigned char Chip8::n() {
-    return opcode & 0x000F;
+Chip8::CPU::CPU(Chip8* parent) : sys(parent) {}
+
+void Chip8::CPU::split_0() {
+    opcode_table_0[sys->kk()](*this);
 }
-
-Chip8::CPU::CPU(Chip8* parent) : sys(parent) {
-    // clang-format off
-    opcode_table = std::array<std::function<void(Chip8::CPU::*)()>, 0x10> {
-    &split_0, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr
-    };
-
-/*const std::array<std::function<void(Chip8::CPU::*)()>, 0x100> Chip8::CPU::opcode_table_0 {
-    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-};
-
-const std::array<std::function<void(Chip8::CPU::*)()>, 0x10> Chip8::CPU::opcode_table_8 {
-    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr
-};
-
-const std::array<std::function<void(Chip8::CPU::*)()>, 0x100> Chip8::CPU::opcode_table_E {
-    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-};
-
-const std::array<std::function<void(Chip8::CPU::*)()>, 0x100> Chip8::CPU::opcode_table_F {
-    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-};*/
-    // clang-format on
-}
-
-void Chip8::CPU::split_0() {}
 
 void Chip8::CPU::CLS() {
     std::fill(sys->gfx.begin(), sys->gfx.end(), 0);
@@ -514,29 +309,30 @@ void Chip8::CPU::CLS() {
 }
 
 void Chip8::CPU::RET() {
-    sys->pc = sys->stack[sys->sp];
     sys->sp--;
+    sys->pc = sys->stack[sys->sp] + 2;
 }
 
 void Chip8::CPU::JP_addr() {
-    sys->I = sys->nnn();
+    sys->pc = sys->nnn();
 }
 
 void Chip8::CPU::CALL_addr() {
-    sys->stack[sys->sp++] = sys->pc;
+    sys->stack[sys->sp] = sys->pc;
+    sys->sp++;
     sys->pc = sys->nnn();
 }
 
 void Chip8::CPU::SE_Vx_byte() {
-    sys += sys->Vx() == sys->kk() ? 4 : 2;
+    sys->pc += sys->Vx() == sys->kk() ? 4 : 2;
 }
 
 void Chip8::CPU::SNE_Vx_byte() {
-    sys += sys->Vx() != sys->kk() ? 4 : 2;
+    sys->pc += sys->Vx() != sys->kk() ? 4 : 2;
 }
 
 void Chip8::CPU::SE_Vx_Vy() {
-    sys += sys->Vx() == sys->Vy() ? 4 : 2;
+    sys->pc += sys->Vx() == sys->Vy() ? 4 : 2;
 }
 
 void Chip8::CPU::LD_Vx_byte() {
@@ -549,7 +345,9 @@ void Chip8::CPU::ADD_Vx_byte() {
     sys->pc += 2;
 }
 
-// void Chip8::CPU::split_8() {}
+void Chip8::CPU::split_8() {
+    opcode_table_8[sys->n()](*this);
+}
 
 void Chip8::CPU::LD_Vx_Vy() {
     sys->Vx() = sys->Vy();
@@ -590,20 +388,20 @@ void Chip8::CPU::SHR_Vx() {
     sys->pc += 2;
 }
 
-void Chip8::CPU::SUBN_Vy_Vx() {
+void Chip8::CPU::SUBN_Vx_Vy() {
     sys->V[0xF] = sys->Vy() > sys->Vx();
     sys->Vx() = sys->Vy() - sys->Vx();
     sys->pc += 2;
 }
 
 void Chip8::CPU::SHL_Vx() {
-    sys->V[0xF] = sys->Vx() & 0b1000000;
+    sys->V[0xF] = (sys->Vx() & 0b1000000) >> 7;
     sys->Vx() <<= 1;
     sys->pc += 2;
 }
 
 void Chip8::CPU::SNE_Vx_Vy() {
-    sys += sys->Vx() != sys->Vy() ? 4 : 2;
+    sys->pc += sys->Vx() != sys->Vy() ? 4 : 2;
 }
 
 void Chip8::CPU::LD_I_addr() {
@@ -617,6 +415,7 @@ void Chip8::CPU::JP_0_addr() {
 
 void Chip8::CPU::RND_Vx_byte() {
     sys->Vx() = sys->dist.get()->operator()(sys->rng) & sys->kk();
+    sys->pc += 2;
 }
 
 void Chip8::CPU::DRW_Vx_Vy_nibble() {
@@ -638,9 +437,12 @@ void Chip8::CPU::DRW_Vx_Vy_nibble() {
     }
 
     sys->render->drawGraphics(sys->gfx);
+    sys->pc += 2;
 }
 
-// void Chip8::CPU::split_E() {}
+void Chip8::CPU::split_E() {
+    opcode_table_E[sys->kk()](*this);
+}
 
 void Chip8::CPU::SKP_Vx() {
     sys->pc += sys->keypad->keyIsPressed(sys->Vx()) ? 4 : 2;
@@ -650,30 +452,38 @@ void Chip8::CPU::SKNP_Vx() {
     sys->pc += sys->keypad->keyIsPressed(sys->Vx()) ? 2 : 4;
 }
 
-// void Chip8::CPU::split_F() {}
+void Chip8::CPU::split_F() {
+    opcode_table_F[sys->kk()](*this);
+}
 
 void Chip8::CPU::LD_Vx_DT() {
     sys->Vx() = sys->delay_timer;
+    sys->pc += 2;
 }
 
 void Chip8::CPU::LD_Vx_K() {
     sys->Vx() = sys->keypad->waitForInput();
+    sys->pc += 2;
 }
 
 void Chip8::CPU::LD_DT_Vx() {
     sys->delay_timer = sys->Vx();
+    sys->pc += 2;
 }
 
 void Chip8::CPU::LD_ST_Vx() {
     sys->sound_timer = sys->Vx();
+    sys->pc += 2;
 }
 
 void Chip8::CPU::ADD_I_Vx() {
     sys->I += sys->Vx();
+    sys->pc += 2;
 }
 
 void Chip8::CPU::LD_F_Vx() {
     sys->I = sys->Vx() * 5;
+    sys->pc += 2;
 }
 
 void Chip8::CPU::LD_B_Vx() {
@@ -683,14 +493,237 @@ void Chip8::CPU::LD_B_Vx() {
     sys->memory[sys->I + 1] = num / 10;
     num %= 10;
     sys->memory[sys->I + 2] = num;
+    sys->pc += 2;
 }
 
 void Chip8::CPU::LD_I_Vx() {
-    std::copy_n(std::execution::par_unseq, sys->V.begin(), sys->Vx() + 1,
+    std::copy_n(std::execution::par_unseq, sys->V.begin(), sys->X() + 1,
                 sys->memory.begin() + sys->I);
+    sys->pc += 2;
 }
 
 void Chip8::CPU::LD_Vx_I() {
-    std::copy_n(std::execution::par_unseq, sys->memory.begin() + sys->I, sys->Vx() + 1,
+    std::copy_n(std::execution::par_unseq, sys->memory.begin() + sys->I, sys->X() + 1,
                 sys->V.begin());
+    sys->pc += 2;
 }
+
+// clang-format off
+const std::array<unsigned char, 0x50> Chip8::font{
+	//0
+	0b11110000,
+	0b10010000,
+	0b10010000,
+	0b10010000,
+	0b11110000,
+	//1
+	0b00100000,
+	0b01100000,
+	0b00100000,
+	0b00100000,
+	0b01110000,
+	//2
+	0b11110000,
+	0b00010000,
+	0b11110000,
+	0b10000000,
+	0b11110000,
+	//3
+	0b11110000,
+	0b00010000,
+	0b11110000,
+	0b00010000,
+	0b11110000,
+	//4
+	0b10010000,
+	0b10010000,
+	0b11110000,
+	0b00010000,
+	0b00010000,
+	//5
+	0b11110000,
+	0b10000000,
+	0b11110000,
+	0b00010000,
+	0b11110000,
+	//6
+	0b11110000,
+	0b10000000,
+	0b11110000,
+	0b10010000,
+	0b11110000,
+	//7
+	0b11110000,
+	0b00010000,
+	0b00100000,
+	0b01000000,
+	0b01000000,
+	//8
+	0b11110000,
+	0b10010000,
+	0b11110000,
+	0b10010000,
+	0b11110000,
+	//9
+	0b11110000,
+	0b10010000,
+	0b11110000,
+	0b00010000,
+	0b11110000,
+	//A
+	0b11110000,
+	0b10010000,
+	0b11110000,
+	0b10010000,
+	0b10010000,
+	//B
+	0b11100000,
+	0b10010000,
+	0b11100000,
+	0b10010000,
+	0b11100000,
+	//C
+	0b11110000,
+	0b10000000,
+	0b10000000,
+	0b10000000,
+	0b11110000,
+	//D
+	0b11100000,
+	0b10010000,
+	0b10010000,
+	0b10010000,
+	0b11100000,
+	//E
+	0b11110000,
+	0b10000000,
+	0b11110000,
+	0b10000000,
+	0b11110000,
+	//F
+	0b11110000,
+	0b10000000,
+	0b11110000,
+	0b10000000,
+	0b10000000,
+};
+
+const std::array<std::function<void(Chip8::CPU&)>, 0x10> Chip8::CPU::opcode_table {
+    &CPU::split_0,		&CPU::JP_addr,			&CPU::CALL_addr,	&CPU::SE_Vx_byte, 
+	&CPU::SNE_Vx_byte,	&CPU::SE_Vx_Vy,			&CPU::LD_Vx_byte,	&CPU::ADD_Vx_byte,
+    &CPU::split_8,		&CPU::SNE_Vx_Vy,		&CPU::LD_I_addr,	&CPU::JP_0_addr,
+	&CPU::RND_Vx_byte,	&CPU::DRW_Vx_Vy_nibble,	&CPU::split_E,		&CPU::split_F
+}; 
+
+const std::array<std::function<void(Chip8::CPU&)>, 0x100> Chip8::CPU::opcode_table_0 {
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	&CPU::CLS, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &CPU::RET, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+};
+
+const std::array<std::function<void(Chip8::CPU&)>, 0x10> Chip8::CPU::opcode_table_8 {
+    &CPU::LD_Vx_Vy,		&CPU::OR_Vx_Vy,		&CPU::AND_Vx_Vy,	&CPU::XOR_Vx_Vy,
+	&CPU::ADD_Vx_Vy,	&CPU::SUB_Vx_Vy,	&CPU::SHR_Vx,		&CPU::SUBN_Vx_Vy, 
+	nullptr,			nullptr,			nullptr,			nullptr, 
+	nullptr,			nullptr,			&CPU::SHL_Vx,		nullptr
+};
+
+const std::array<std::function<void(Chip8::CPU&)>, 0x100> Chip8::CPU::opcode_table_E {
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &CPU::SKP_Vx, nullptr,
+	nullptr, &CPU::SKNP_Vx, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+};
+
+const std::array<std::function<void(Chip8::CPU&)>, 0x100> Chip8::CPU::opcode_table_F {
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &CPU::LD_Vx_DT, 
+	nullptr, nullptr, &CPU::LD_Vx_K, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, &CPU::LD_DT_Vx, nullptr, nullptr, 
+	&CPU::LD_ST_Vx, nullptr, nullptr, nullptr, nullptr, nullptr, &CPU::ADD_I_Vx, nullptr,
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, &CPU::LD_F_Vx, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, &CPU::LD_B_Vx, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, &CPU::LD_I_Vx, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, &CPU::LD_Vx_I, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
+	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+};
+// clang-format on

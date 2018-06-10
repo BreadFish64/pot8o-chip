@@ -14,22 +14,23 @@ public:
     explicit Chip8();
 
     class CPU {
+    public:
         explicit CPU(Chip8* parent);
 
         // Main jump table
-        std::array<std::function<void (Chip8::CPU::*)()>, 0x10> opcode_table;
+        static const std::array<std::function<void(Chip8::CPU&)>, 0x10> opcode_table;
 
     private:
         Chip8* sys;
 
         // Jump table for opcodes starting with 0x0
-        // const std::array<void (Chip8::CPU::*)(), 0x100> opcode_table_0;
+        static const std::array<std::function<void(Chip8::CPU&)>, 0x100> opcode_table_0;
         // Jump table for opcodes starting with 0x8
-        // const std::array<void (Chip8::CPU::*)(), 0x10> opcode_table_8;
+        static const std::array<std::function<void(Chip8::CPU&)>, 0x10> opcode_table_8;
         // Jump table for opcodes starting with 0xE
-        // const std::array<void (Chip8::CPU::*)(), 0x100> opcode_table_E;
+        static const std::array<std::function<void(Chip8::CPU&)>, 0x100> opcode_table_E;
         // Jump table for opcodes starting with 0xF
-        // const std::array<void (Chip8::CPU::*)(), 0x100> opcode_table_F;
+        static const std::array<std::function<void(Chip8::CPU&)>, 0x100> opcode_table_F;
 
         // Call sub-table for opcodes starting with 0x0
         void split_0();
@@ -70,7 +71,7 @@ public:
         // Set V[x] to V[x] >> V[y]
         void SHR_Vx();
         // Set V[x] to V[y] - V[x]
-        void SUBN_Vy_Vx();
+        void SUBN_Vx_Vy();
         // Set V[x] to V[x] << V[y]
         void SHL_Vx();
 
@@ -142,9 +143,12 @@ private:
     void emulateCycle();
     void loadGame(std::string path);
 
+    inline unsigned char op();
+    inline unsigned char X();
+    inline unsigned char Y();
     inline unsigned char& Vx();
     inline unsigned char& Vy();
+    inline unsigned char n();
     inline unsigned char kk();
     inline unsigned short nnn();
-    inline unsigned char n();
 };
