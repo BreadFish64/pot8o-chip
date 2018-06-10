@@ -1,9 +1,6 @@
 #include <execution>
 #include <fstream>
-
 #include <istream>
-
-//#include <vector>
 #include "chip8.h"
 #include "keypad.h"
 #include "render.h"
@@ -27,12 +24,12 @@ void Chip8::initialize() {
     pc = 0x200;
     opcode = 0;
     I = 0;
-    sp = 0;
 
     std::fill(gfx.begin(), gfx.end(), 0);
-    std::fill(stack.begin(), stack.end(), 0);
     std::fill(V.begin(), V.end(), 0);
     std::fill(memory.begin(), memory.end(), 0);
+
+    stack.clear();
 
     std::copy(font.begin(), font.end(), memory.begin());
 
@@ -51,7 +48,7 @@ void Chip8::emulate() {
     while (true) {
         frame_start = std::chrono::steady_clock::now();
         emulateCycle();
-        // std::this_thread::sleep_until(frame_start + 1ms);
+        std::this_thread::sleep_until(frame_start + 1ms);
     }
 }
 
@@ -309,8 +306,8 @@ void Chip8::CPU::CLS() {
 }
 
 void Chip8::CPU::RET() {
-    sys->sp--;
-    sys->pc = sys->stack[sys->sp] + 2;
+    sys->pc = sys->stack.back() + 2;
+    sys->stack.pop_back();
 }
 
 void Chip8::CPU::JP_addr() {
@@ -318,8 +315,7 @@ void Chip8::CPU::JP_addr() {
 }
 
 void Chip8::CPU::CALL_addr() {
-    sys->stack[sys->sp] = sys->pc;
-    sys->sp++;
+    sys->stack.push_back(sys->pc);
     sys->pc = sys->nnn();
 }
 

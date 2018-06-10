@@ -5,6 +5,7 @@
 #include <memory>
 #include <random>
 #include <string>
+#include <vector>
 
 class Keypad;
 class Render;
@@ -128,13 +129,12 @@ private:
     std::unique_ptr<std::uniform_int_distribution<std::mt19937::result_type>> dist;
 
     std::array<unsigned short, 64 * 32> gfx;
-    std::array<unsigned short, 16> stack;
+    std::vector<unsigned short> stack;
     std::array<unsigned char, 0x1000> memory;
     std::array<unsigned char, 16> V;
     unsigned short opcode;
     unsigned short I;
     unsigned short pc;
-    unsigned short sp;
     unsigned char delay_timer;
     unsigned char sound_timer;
 
