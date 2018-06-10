@@ -8,13 +8,7 @@
 using namespace std::chrono_literals;
 
 Chip8::Chip8() {
-    keypad = new Keypad();
-    render = std::make_unique<Render>();
-    cpu = std::make_unique<CPU>(this);
-
     rng.seed(std::random_device()());
-    dist = std::make_unique<std::uniform_int_distribution<std::mt19937::result_type>>(0x00, 0xFF);
-
     initialize();
     loadGame("meep");
     emulate();
@@ -54,7 +48,7 @@ void Chip8::emulate() {
 
 void Chip8::emulateCycle() {
     opcode = memory[pc] << 8 | memory[pc + 1];
-    CPU::opcode_table[op()](*cpu);
+    CPU::opcode_table[op()](cpu);
 
     if (delay_timer > 0)
         --delay_timer;
@@ -98,214 +92,212 @@ inline unsigned short Chip8::nnn() {
     return opcode & 0x0FFF;
 }
 
-Chip8::CPU::CPU(Chip8* parent) : sys(parent) {}
+Chip8::CPU::CPU(Chip8* parent) : sys(*parent) {}
 
 void Chip8::CPU::split_0() {
-    opcode_table_0[sys->kk()](*this);
+    opcode_table_0[sys.kk()](*this);
 }
 
 void Chip8::CPU::CLS() {
-    std::fill(std::execution::par_unseq, sys->gfx.begin(), sys->gfx.end(), 0);
-    sys->pc += 2;
+    std::fill(std::execution::par_unseq, sys.gfx.begin(), sys.gfx.end(), 0);
+    sys.pc += 2;
 }
 
 void Chip8::CPU::RET() {
-    sys->pc = sys->stack.back() + 2;
-    sys->stack.pop_back();
+    sys.pc = sys.stack.back() + 2;
+    sys.stack.pop_back();
 }
 
 void Chip8::CPU::JP_addr() {
-    sys->pc = sys->nnn();
+    sys.pc = sys.nnn();
 }
 
 void Chip8::CPU::CALL_addr() {
-    sys->stack.push_back(sys->pc);
-    sys->pc = sys->nnn();
+    sys.stack.push_back(sys.pc);
+    sys.pc = sys.nnn();
 }
 
 void Chip8::CPU::SE_Vx_byte() {
-    sys->pc += sys->Vx() == sys->kk() ? 4 : 2;
+    sys.pc += sys.Vx() == sys.kk() ? 4 : 2;
 }
 
 void Chip8::CPU::SNE_Vx_byte() {
-    sys->pc += sys->Vx() != sys->kk() ? 4 : 2;
+    sys.pc += sys.Vx() != sys.kk() ? 4 : 2;
 }
 
 void Chip8::CPU::SE_Vx_Vy() {
-    sys->pc += sys->Vx() == sys->Vy() ? 4 : 2;
+    sys.pc += sys.Vx() == sys.Vy() ? 4 : 2;
 }
 
 void Chip8::CPU::LD_Vx_byte() {
-    sys->Vx() = sys->kk();
-    sys->pc += 2;
+    sys.Vx() = sys.kk();
+    sys.pc += 2;
 }
 
 void Chip8::CPU::ADD_Vx_byte() {
-    sys->Vx() += sys->kk();
-    sys->pc += 2;
+    sys.Vx() += sys.kk();
+    sys.pc += 2;
 }
 
 void Chip8::CPU::split_8() {
-    opcode_table_8[sys->n()](*this);
+    opcode_table_8[sys.n()](*this);
 }
 
 void Chip8::CPU::LD_Vx_Vy() {
-    sys->Vx() = sys->Vy();
-    sys->pc += 2;
+    sys.Vx() = sys.Vy();
+    sys.pc += 2;
 }
 
 void Chip8::CPU::OR_Vx_Vy() {
-    sys->Vx() |= sys->Vy();
-    sys->pc += 2;
+    sys.Vx() |= sys.Vy();
+    sys.pc += 2;
 }
 
 void Chip8::CPU::AND_Vx_Vy() {
-    sys->Vx() &= sys->Vy();
-    sys->pc += 2;
+    sys.Vx() &= sys.Vy();
+    sys.pc += 2;
 }
 
 void Chip8::CPU::XOR_Vx_Vy() {
-    sys->Vx() ^= sys->Vy();
-    sys->pc += 2;
+    sys.Vx() ^= sys.Vy();
+    sys.pc += 2;
 }
 
 void Chip8::CPU::ADD_Vx_Vy() {
-    unsigned short result = sys->Vx() + sys->Vy();
-    sys->V[0xF] = result > 0xFF;
-    sys->Vx() = static_cast<unsigned char>(result & 0xFF);
-    sys->pc += 2;
+    unsigned short result = sys.Vx() + sys.Vy();
+    sys.V[0xF] = result > 0xFF;
+    sys.Vx() = static_cast<unsigned char>(result & 0xFF);
+    sys.pc += 2;
 }
 
 void Chip8::CPU::SUB_Vx_Vy() {
-    sys->V[0xF] = sys->Vx() > sys->Vy();
-    sys->Vx() -= sys->Vy();
-    sys->pc += 2;
+    sys.V[0xF] = sys.Vx() > sys.Vy();
+    sys.Vx() -= sys.Vy();
+    sys.pc += 2;
 }
 
 void Chip8::CPU::SHR_Vx() {
-    sys->V[0xF] = sys->Vx() & 0b0000001;
-    sys->Vx() >>= 1;
-    sys->pc += 2;
+    sys.V[0xF] = sys.Vx() & 0b0000001;
+    sys.Vx() >>= 1;
+    sys.pc += 2;
 }
 
 void Chip8::CPU::SUBN_Vx_Vy() {
-    sys->V[0xF] = sys->Vy() > sys->Vx();
-    sys->Vx() = sys->Vy() - sys->Vx();
-    sys->pc += 2;
+    sys.V[0xF] = sys.Vy() > sys.Vx();
+    sys.Vx() = sys.Vy() - sys.Vx();
+    sys.pc += 2;
 }
 
 void Chip8::CPU::SHL_Vx() {
-    sys->V[0xF] = (sys->Vx() & 0b1000000) >> 7;
-    sys->Vx() <<= 1;
-    sys->pc += 2;
+    sys.V[0xF] = (sys.Vx() & 0b1000000) >> 7;
+    sys.Vx() <<= 1;
+    sys.pc += 2;
 }
 
 void Chip8::CPU::SNE_Vx_Vy() {
-    sys->pc += sys->Vx() != sys->Vy() ? 4 : 2;
+    sys.pc += sys.Vx() != sys.Vy() ? 4 : 2;
 }
 
 void Chip8::CPU::LD_I_addr() {
-    sys->I = sys->nnn();
-    sys->pc += 2;
+    sys.I = sys.nnn();
+    sys.pc += 2;
 }
 
 void Chip8::CPU::JP_0_addr() {
-    sys->pc = sys->nnn() + sys->V[0x0];
+    sys.pc = sys.nnn() + sys.V[0x0];
 }
 
 void Chip8::CPU::RND_Vx_byte() {
-    sys->Vx() = sys->dist.get()->operator()(sys->rng) & sys->kk();
-    sys->pc += 2;
+    sys.Vx() = sys.dist(sys.rng) & sys.kk();
+    sys.pc += 2;
 }
 
 void Chip8::CPU::DRW_Vx_Vy_nibble() {
-    unsigned char x = sys->Vx() + 8;
-    unsigned char height = sys->n();
-    unsigned char y = sys->Vy();
-    sys->V[0xF] = false;
+    unsigned char x = sys.Vx() + 8;
+    unsigned char height = sys.n();
+    unsigned char y = sys.Vy();
+    sys.V[0xF] = false;
 
     for (unsigned char row = 0; row < height; row++) {
-        unsigned char byte = sys->memory[sys->I + row];
+        unsigned char byte = sys.memory[sys.I + row];
         for (char i = 0; i < 8; i++) {
-            unsigned short& pixel = sys->gfx[((y + row) % 32) * 64 + (x - i - 1) % 64];
+            unsigned short& pixel = sys.gfx[((y + row) % 32) * 64 + (x - i - 1) % 64];
             if (byte & (1 << i)) {
                 if (pixel)
-                    sys->V[0xF] = true;
+                    sys.V[0xF] = true;
                 pixel = ~pixel;
             }
         }
     }
 
-    sys->render->drawGraphics(sys->gfx);
-    sys->pc += 2;
+    sys.render.drawGraphics(sys.gfx);
+    sys.pc += 2;
 }
 
 void Chip8::CPU::split_E() {
-    opcode_table_E[sys->kk()](*this);
+    opcode_table_E[sys.kk()](*this);
 }
 
 void Chip8::CPU::SKP_Vx() {
-    sys->pc += sys->keypad->keyIsPressed(sys->Vx()) ? 4 : 2;
+    sys.pc += sys.keypad.keyIsPressed(sys.Vx()) ? 4 : 2;
 }
 
 void Chip8::CPU::SKNP_Vx() {
-    sys->pc += sys->keypad->keyIsPressed(sys->Vx()) ? 2 : 4;
+    sys.pc += sys.keypad.keyIsPressed(sys.Vx()) ? 2 : 4;
 }
 
 void Chip8::CPU::split_F() {
-    opcode_table_F[sys->kk()](*this);
+    opcode_table_F[sys.kk()](*this);
 }
 
 void Chip8::CPU::LD_Vx_DT() {
-    sys->Vx() = sys->delay_timer;
-    sys->pc += 2;
+    sys.Vx() = sys.delay_timer;
+    sys.pc += 2;
 }
 
 void Chip8::CPU::LD_Vx_K() {
-    sys->Vx() = sys->keypad->waitForInput();
-    sys->pc += 2;
+    sys.Vx() = sys.keypad.waitForInput();
+    sys.pc += 2;
 }
 
 void Chip8::CPU::LD_DT_Vx() {
-    sys->delay_timer = sys->Vx();
-    sys->pc += 2;
+    sys.delay_timer = sys.Vx();
+    sys.pc += 2;
 }
 
 void Chip8::CPU::LD_ST_Vx() {
-    sys->sound_timer = sys->Vx();
-    sys->pc += 2;
+    sys.sound_timer = sys.Vx();
+    sys.pc += 2;
 }
 
 void Chip8::CPU::ADD_I_Vx() {
-    sys->I += sys->Vx();
-    sys->pc += 2;
+    sys.I += sys.Vx();
+    sys.pc += 2;
 }
 
 void Chip8::CPU::LD_F_Vx() {
-    sys->I = sys->Vx() * 5;
-    sys->pc += 2;
+    sys.I = sys.Vx() * 5;
+    sys.pc += 2;
 }
 
 void Chip8::CPU::LD_B_Vx() {
-    unsigned char num = sys->Vx();
-    sys->memory[sys->I] = num / 100;
+    unsigned char num = sys.Vx();
+    sys.memory[sys.I] = num / 100;
     num %= 100;
-    sys->memory[sys->I + 1] = num / 10;
+    sys.memory[sys.I + 1] = num / 10;
     num %= 10;
-    sys->memory[sys->I + 2] = num;
-    sys->pc += 2;
+    sys.memory[sys.I + 2] = num;
+    sys.pc += 2;
 }
 
 void Chip8::CPU::LD_I_Vx() {
-    std::copy_n(std::execution::par_unseq, sys->V.begin(), sys->X() + 1,
-                sys->memory.begin() + sys->I);
-    sys->pc += 2;
+    std::copy_n(std::execution::par_unseq, sys.V.begin(), sys.X() + 1, sys.memory.begin() + sys.I);
+    sys.pc += 2;
 }
 
 void Chip8::CPU::LD_Vx_I() {
-    std::copy_n(std::execution::par_unseq, sys->memory.begin() + sys->I, sys->X() + 1,
-                sys->V.begin());
-    sys->pc += 2;
+    std::copy_n(std::execution::par_unseq, sys.memory.begin() + sys.I, sys.X() + 1, sys.V.begin());
+    sys.pc += 2;
 }
 
 // clang-format off

@@ -6,6 +6,8 @@
 #include <random>
 #include <string>
 #include <vector>
+#include "keypad.h"
+#include "render.h"
 
 class Keypad;
 class Render;
@@ -22,7 +24,7 @@ public:
         static const std::array<std::function<void(Chip8::CPU&)>, 0x10> opcode_table;
 
     private:
-        Chip8* sys;
+        Chip8& sys;
 
         // Jump table for opcodes starting with 0x0
         static const std::array<std::function<void(Chip8::CPU&)>, 0x100> opcode_table_0;
@@ -119,14 +121,15 @@ public:
 private:
     static const std::array<unsigned char, 80> font;
 
-    Keypad* keypad = nullptr;
-    std::unique_ptr<Render> render = nullptr;
-    std::unique_ptr<CPU> cpu = nullptr;
+    Keypad keypad;
+    Render render;
+    CPU cpu = CPU(this);
 
     std::chrono::time_point<std::chrono::steady_clock> frame_start;
 
     std::mt19937 rng;
-    std::unique_ptr<std::uniform_int_distribution<std::mt19937::result_type>> dist;
+    std::uniform_int_distribution<std::mt19937::result_type> dist =
+        std::uniform_int_distribution<std::mt19937::result_type>(0x00, 0xFF);
 
     std::array<unsigned short, 64 * 32> gfx;
     std::vector<unsigned short> stack;
