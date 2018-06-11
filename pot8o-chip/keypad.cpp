@@ -6,6 +6,8 @@ Keypad::Keypad() {
     keyboard_state.reset(SDL_GetKeyboardState(nullptr));
 }
 
+Keypad::~Keypad() = default;
+
 unsigned char Keypad::waitForInput() {
     while (SDL_PollEvent(nullptr)) {
         for (unsigned char i = 0; i < keys.size(); i++) {

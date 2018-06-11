@@ -6,7 +6,7 @@
 class Keypad {
 public:
     explicit Keypad();
-    ~Keypad() = default;
+    ~Keypad();
 
     unsigned char waitForInput();
     bool keyIsPressed(unsigned char key);

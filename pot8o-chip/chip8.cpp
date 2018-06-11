@@ -3,18 +3,22 @@
 #include <istream>
 #include "chip8.h"
 #include "keypad.h"
-#include "render.h"
+#include "renderer.h"
 
 using namespace std::chrono_literals;
 
 Chip8::Chip8() {
-    rng.seed(std::random_device()());
-    initialize();
+    keypad = std::make_unique<Keypad>();
+    render = std::make_unique<Renderer>();
+    dist = std::make_unique<std::uniform_int_distribution<std::mt19937::result_type>>(0x00, 0xFF);
+
     loadGame("meep");
     emulate();
 }
 
 void Chip8::initialize() {
+    rng.seed(std::random_device()());
+
     pc = 0x200;
     opcode = 0;
     I = 0;
@@ -32,6 +36,7 @@ void Chip8::initialize() {
 }
 
 void Chip8::loadGame(std::string path) {
+    initialize();
     path = "F:/git/chip8/TANK";
     std::ifstream file(path, std::ios::binary);
     std::copy(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>(),
@@ -42,7 +47,7 @@ void Chip8::emulate() {
     while (true) {
         frame_start = std::chrono::steady_clock::now();
         emulateCycle();
-        std::this_thread::sleep_until(frame_start + 1ms);
+        std::this_thread::sleep_until(frame_start + 16.7ms);
     }
 }
 
@@ -208,7 +213,7 @@ void Chip8::CPU::JP_0_addr() {
 }
 
 void Chip8::CPU::RND_Vx_byte() {
-    sys.Vx() = sys.dist(sys.rng) & sys.kk();
+    sys.Vx() = sys.dist->operator()(sys.rng) & sys.kk();
     sys.pc += 2;
 }
 
@@ -230,7 +235,7 @@ void Chip8::CPU::DRW_Vx_Vy_nibble() {
         }
     }
 
-    sys.render.drawGraphics(sys.gfx);
+    sys.render->drawGraphics(sys.gfx);
     sys.pc += 2;
 }
 
@@ -239,11 +244,11 @@ void Chip8::CPU::split_E() {
 }
 
 void Chip8::CPU::SKP_Vx() {
-    sys.pc += sys.keypad.keyIsPressed(sys.Vx()) ? 4 : 2;
+    sys.pc += sys.keypad->keyIsPressed(sys.Vx()) ? 4 : 2;
 }
 
 void Chip8::CPU::SKNP_Vx() {
-    sys.pc += sys.keypad.keyIsPressed(sys.Vx()) ? 2 : 4;
+    sys.pc += sys.keypad->keyIsPressed(sys.Vx()) ? 2 : 4;
 }
 
 void Chip8::CPU::split_F() {
@@ -256,7 +261,7 @@ void Chip8::CPU::LD_Vx_DT() {
 }
 
 void Chip8::CPU::LD_Vx_K() {
-    sys.Vx() = sys.keypad.waitForInput();
+    sys.Vx() = sys.keypad->waitForInput();
     sys.pc += 2;
 }
 
@@ -301,7 +306,7 @@ void Chip8::CPU::LD_Vx_I() {
 }
 
 // clang-format off
-const std::array<unsigned char, 0x50> Chip8::font{
+const std::array<const unsigned char, 0x50> Chip8::font{
 	//0
 	0b11110000,
 	0b10010000,
@@ -400,14 +405,14 @@ const std::array<unsigned char, 0x50> Chip8::font{
 	0b10000000,
 };
 
-const std::array<std::function<void(Chip8::CPU&)>, 0x10> Chip8::CPU::opcode_table {
+const std::array<const std::function<void(Chip8::CPU&)>, 0x10> Chip8::CPU::opcode_table {
     &CPU::split_0,		&CPU::JP_addr,			&CPU::CALL_addr,	&CPU::SE_Vx_byte, 
 	&CPU::SNE_Vx_byte,	&CPU::SE_Vx_Vy,			&CPU::LD_Vx_byte,	&CPU::ADD_Vx_byte,
     &CPU::split_8,		&CPU::SNE_Vx_Vy,		&CPU::LD_I_addr,	&CPU::JP_0_addr,
 	&CPU::RND_Vx_byte,	&CPU::DRW_Vx_Vy_nibble,	&CPU::split_E,		&CPU::split_F
 }; 
 
-const std::array<std::function<void(Chip8::CPU&)>, 0x100> Chip8::CPU::opcode_table_0 {
+const std::array<const std::function<void(Chip8::CPU&)>, 0x100> Chip8::CPU::opcode_table_0 {
     nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
 	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
@@ -442,14 +447,14 @@ const std::array<std::function<void(Chip8::CPU&)>, 0x100> Chip8::CPU::opcode_tab
 	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 };
 
-const std::array<std::function<void(Chip8::CPU&)>, 0x10> Chip8::CPU::opcode_table_8 {
+const std::array<const std::function<void(Chip8::CPU&)>, 0x10> Chip8::CPU::opcode_table_8 {
     &CPU::LD_Vx_Vy,		&CPU::OR_Vx_Vy,		&CPU::AND_Vx_Vy,	&CPU::XOR_Vx_Vy,
 	&CPU::ADD_Vx_Vy,	&CPU::SUB_Vx_Vy,	&CPU::SHR_Vx,		&CPU::SUBN_Vx_Vy, 
 	nullptr,			nullptr,			nullptr,			nullptr, 
 	nullptr,			nullptr,			&CPU::SHL_Vx,		nullptr
 };
 
-const std::array<std::function<void(Chip8::CPU&)>, 0x100> Chip8::CPU::opcode_table_E {
+const std::array<const std::function<void(Chip8::CPU&)>, 0x100> Chip8::CPU::opcode_table_E {
     nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
 	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
@@ -484,7 +489,7 @@ const std::array<std::function<void(Chip8::CPU&)>, 0x100> Chip8::CPU::opcode_tab
 	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 };
 
-const std::array<std::function<void(Chip8::CPU&)>, 0x100> Chip8::CPU::opcode_table_F {
+const std::array<const std::function<void(Chip8::CPU&)>, 0x100> Chip8::CPU::opcode_table_F {
     nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &CPU::LD_Vx_DT, 
 	nullptr, nullptr, &CPU::LD_Vx_K, nullptr, nullptr, nullptr, nullptr, nullptr,
 	nullptr, nullptr, nullptr, nullptr, nullptr, &CPU::LD_DT_Vx, nullptr, nullptr, 

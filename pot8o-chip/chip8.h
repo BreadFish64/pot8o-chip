@@ -6,34 +6,30 @@
 #include <random>
 #include <string>
 #include <vector>
-#include "keypad.h"
-#include "render.h"
 
 class Keypad;
-class Render;
+class Renderer;
 
 class Chip8 {
 public:
-    explicit Chip8();
-
     class CPU {
     public:
         explicit CPU(Chip8* parent);
 
         // Main jump table
-        static const std::array<std::function<void(Chip8::CPU&)>, 0x10> opcode_table;
+        static const std::array<const std::function<void(Chip8::CPU&)>, 0x10> opcode_table;
 
     private:
         Chip8& sys;
 
         // Jump table for opcodes starting with 0x0
-        static const std::array<std::function<void(Chip8::CPU&)>, 0x100> opcode_table_0;
+        static const std::array<const std::function<void(Chip8::CPU&)>, 0x100> opcode_table_0;
         // Jump table for opcodes starting with 0x8
-        static const std::array<std::function<void(Chip8::CPU&)>, 0x10> opcode_table_8;
+        static const std::array<const std::function<void(Chip8::CPU&)>, 0x10> opcode_table_8;
         // Jump table for opcodes starting with 0xE
-        static const std::array<std::function<void(Chip8::CPU&)>, 0x100> opcode_table_E;
+        static const std::array<const std::function<void(Chip8::CPU&)>, 0x100> opcode_table_E;
         // Jump table for opcodes starting with 0xF
-        static const std::array<std::function<void(Chip8::CPU&)>, 0x100> opcode_table_F;
+        static const std::array<const std::function<void(Chip8::CPU&)>, 0x100> opcode_table_F;
 
         // Call sub-table for opcodes starting with 0x0
         void split_0();
@@ -118,18 +114,20 @@ public:
         void LD_Vx_I();
     };
 
-private:
-    static const std::array<unsigned char, 80> font;
+    explicit Chip8();
+    void loadGame(std::string path);
 
-    Keypad keypad;
-    Render render;
+private:
+    static const std::array<const unsigned char, 80> font;
+
+    std::unique_ptr<Keypad> keypad = nullptr;
+    std::unique_ptr<Renderer> render = nullptr;
     CPU cpu = CPU(this);
 
     std::chrono::time_point<std::chrono::steady_clock> frame_start;
 
     std::mt19937 rng;
-    std::uniform_int_distribution<std::mt19937::result_type> dist =
-        std::uniform_int_distribution<std::mt19937::result_type>(0x00, 0xFF);
+    std::unique_ptr<std::uniform_int_distribution<std::mt19937::result_type>> dist = nullptr;
 
     std::array<unsigned short, 64 * 32> gfx;
     std::vector<unsigned short> stack;
@@ -144,7 +142,6 @@ private:
     void initialize();
     void emulate();
     void emulateCycle();
-    void loadGame(std::string path);
 
     inline unsigned char op();
     inline unsigned char X();

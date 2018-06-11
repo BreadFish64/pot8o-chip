@@ -21,10 +21,10 @@
     <ClCompile Include="chip8.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="render.cpp">
+    <ClCompile Include="keypad.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="keypad.cpp">
+    <ClCompile Include="renderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -35,10 +35,10 @@
     <ClInclude Include="main.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="render.h">
+    <ClInclude Include="keypad.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="keypad.h">
+    <ClInclude Include="renderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
