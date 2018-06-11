@@ -1,19 +1,20 @@
 #include <execution>
 #include <fstream>
+#include <iostream>
 #include <istream>
 #include "chip8.h"
-#include "keypad.h"
-#include "renderer.h"
-
-using namespace std::chrono_literals;
 
 Chip8::Chip8() {
-    keypad = std::make_unique<Keypad>();
-    render = std::make_unique<Renderer>();
+    renderer = std::make_unique<Renderer>();
+    keypad = std::make_unique<Keypad>(this, renderer.get());
     dist = std::make_unique<std::uniform_int_distribution<std::mt19937::result_type>>(0x00, 0xFF);
+    frame_length = std::chrono::duration<double, std::milli>(1000.0 / target_clock_speed);
+}
 
-    loadGame("meep");
-    emulate();
+void Chip8::changeSpeed(signed int diff) {
+    target_clock_speed = (target_clock_speed + diff > 0) ? (target_clock_speed + diff) : 1;
+    frame_length = std::chrono::duration<double, std::milli>(1000.0 / target_clock_speed);
+    renderer->setTitleBar(title + " - " + std::to_string(target_clock_speed) + "hz");
 }
 
 void Chip8::initialize() {
@@ -37,17 +38,26 @@ void Chip8::initialize() {
 
 void Chip8::loadGame(std::string path) {
     initialize();
-    path = "F:/git/chip8/TANK";
+    if (path.at(path.size() - 1) == '"')
+        path.erase(path.size() - 1);
+    if (path.at(0) == '"')
+        path.erase(0, 1);
+    title = path.substr(path.find_last_of('/') + 1, path.size() - path.find_last_of('/') - 1);
+    renderer->setTitleBar(title + " - " + std::to_string(target_clock_speed) + "hz");
     std::ifstream file(path, std::ios::binary);
     std::copy(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>(),
               memory.begin() + 0x200);
 }
 
 void Chip8::emulate() {
+    frame_start = std::chrono::steady_clock::now();
     while (true) {
-        frame_start = std::chrono::steady_clock::now();
         emulateCycle();
-        std::this_thread::sleep_until(frame_start + 16.7ms);
+        keypad->checkInput();
+        if (limitSpeed)
+            std::this_thread::sleep_until(
+                frame_start +=
+                std::chrono::duration_cast<std::chrono::steady_clock::duration>(frame_length));
     }
 }
 
@@ -60,7 +70,7 @@ void Chip8::emulateCycle() {
 
     if (sound_timer > 0) {
         if (sound_timer == 1)
-            printf("BEEP!\n");
+            std::cout << "BEEP" << std::endl;
         --sound_timer;
     }
 }
@@ -218,15 +228,15 @@ void Chip8::CPU::RND_Vx_byte() {
 }
 
 void Chip8::CPU::DRW_Vx_Vy_nibble() {
-    unsigned char x = sys.Vx() + 8;
-    unsigned char height = sys.n();
+    unsigned char x = sys.Vx() + 71;
     unsigned char y = sys.Vy();
+    unsigned char height = sys.n();
     sys.V[0xF] = false;
 
     for (unsigned char row = 0; row < height; row++) {
         unsigned char byte = sys.memory[sys.I + row];
         for (char i = 0; i < 8; i++) {
-            unsigned short& pixel = sys.gfx[((y + row) % 32) * 64 + (x - i - 1) % 64];
+            unsigned short& pixel = sys.gfx[((y + row) % 32) * 64 + (x - i) % 64];
             if (byte & (1 << i)) {
                 if (pixel)
                     sys.V[0xF] = true;
@@ -235,7 +245,7 @@ void Chip8::CPU::DRW_Vx_Vy_nibble() {
         }
     }
 
-    sys.render->drawGraphics(sys.gfx);
+    sys.renderer->drawGraphics(sys.gfx);
     sys.pc += 2;
 }
 

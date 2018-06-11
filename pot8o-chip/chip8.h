@@ -6,9 +6,8 @@
 #include <random>
 #include <string>
 #include <vector>
-
-class Keypad;
-class Renderer;
+#include "keypad.h"
+#include "renderer.h"
 
 class Chip8 {
 public:
@@ -116,23 +115,29 @@ public:
 
     explicit Chip8();
     void loadGame(std::string path);
+    void emulate();
+    void changeSpeed(signed int diff);
+    bool limitSpeed = true;
 
 private:
     static const std::array<const unsigned char, 80> font;
 
     std::unique_ptr<Keypad> keypad = nullptr;
-    std::unique_ptr<Renderer> render = nullptr;
+    std::unique_ptr<Renderer> renderer = nullptr;
     CPU cpu = CPU(this);
 
+    std::string title;
+    int target_clock_speed = 60;
+    std::chrono::duration<double, std::milli> frame_length;
     std::chrono::time_point<std::chrono::steady_clock> frame_start;
 
     std::mt19937 rng;
     std::unique_ptr<std::uniform_int_distribution<std::mt19937::result_type>> dist = nullptr;
 
     std::array<unsigned short, 64 * 32> gfx;
-    std::vector<unsigned short> stack;
     std::array<unsigned char, 0x1000> memory;
     std::array<unsigned char, 16> V;
+    std::vector<unsigned short> stack;
     unsigned short opcode;
     unsigned short I;
     unsigned short pc;
@@ -140,7 +145,6 @@ private:
     unsigned char sound_timer;
 
     void initialize();
-    void emulate();
     void emulateCycle();
 
     inline unsigned char op();
