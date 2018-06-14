@@ -11,15 +11,17 @@
 
 class Chip8 {
 public:
+    // contains CPU instructions and jump tables
     class CPU {
     public:
         explicit CPU(Chip8* parent);
+        ~CPU();
 
         // Main jump table
         static const std::array<const std::function<void(Chip8::CPU&)>, 0x10> opcode_table;
 
     private:
-        Chip8& sys;
+        Chip8& system;
 
         // Jump table for opcodes starting with 0x0
         static const std::array<const std::function<void(Chip8::CPU&)>, 0x100> opcode_table_0;
@@ -114,45 +116,74 @@ public:
     };
 
     explicit Chip8();
+    ~Chip8();
+
+    // load game into memory
     void loadGame(std::string path);
+    // main loop
     void emulate();
+    // changes internal clock rate
     void changeSpeed(signed int diff);
+    // tells renderer the window size has been changed
+    void changeWindowSize();
     bool limitSpeed = true;
+    bool paused = false;
 
 private:
+    // system font to be loaded into memory
     static const std::array<const unsigned char, 80> font;
 
-    std::unique_ptr<Keypad> keypad = nullptr;
-    std::unique_ptr<Renderer> renderer = nullptr;
+    const std::unique_ptr<Renderer> renderer = nullptr;
+    const std::unique_ptr<Keypad> keypad = nullptr;
     CPU cpu = CPU(this);
 
     std::string title;
     int target_clock_speed = 60;
-    std::chrono::duration<double, std::milli> frame_length;
+    std::chrono::steady_clock::duration frame_length;
     std::chrono::time_point<std::chrono::steady_clock> frame_start;
 
+    // used for random number generation in intruction 0xC
     std::mt19937 rng;
-    std::unique_ptr<std::uniform_int_distribution<std::mt19937::result_type>> dist = nullptr;
+    std::uniform_int_distribution<std::mt19937::result_type> dist =
+        std::uniform_int_distribution<std::mt19937::result_type>(0x00, 0xFF);
 
-    std::array<unsigned short, 64 * 32> gfx;
+    // contains pixel information
+    std::array<unsigned short, 64 * 32> frame_buffer;
     std::array<unsigned char, 0x1000> memory;
-    std::array<unsigned char, 16> V;
+    // system registers
+    std::array<unsigned char, 0x10> V;
+    // contains addresses to return from calls
     std::vector<unsigned short> stack;
+    // current instruction
     unsigned short opcode;
+    // contains a single memory address
     unsigned short I;
-    unsigned short pc;
+    // location in memory corresponding to the current instruction
+    unsigned short program_counter;
+    // counts down each cycle
     unsigned char delay_timer;
+    // counts down each cycle, beeps when 0 is hit
     unsigned char sound_timer;
 
+    // clear emulated system state
     void initialize();
+    // emulate one cycle
     void emulateCycle();
 
+    // returns first nibble of opcode
     inline unsigned char op();
+    // returns second nibble of opcode
     inline unsigned char X();
+    // returns third nibble of opcode
     inline unsigned char Y();
+    // returns reference to register X
     inline unsigned char& Vx();
+    // returns reference to register Y
     inline unsigned char& Vy();
+    // returns last nibble of opcode
     inline unsigned char n();
+    // returns last byte of opcode
     inline unsigned char kk();
+    // returns last 3 nibbles of opcode
     inline unsigned short nnn();
 };

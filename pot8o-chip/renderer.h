@@ -7,9 +7,8 @@ struct SDL_Texture;
 struct SDL_Window;
 
 class Renderer {
-    friend class Keypad;
-
 public:
+    // gives unique_ptr something to use for a destructor
     struct SDL_Deleter {
         void operator()(SDL_Window* p) const;
         void operator()(SDL_Renderer* p) const;
@@ -19,14 +18,14 @@ public:
     explicit Renderer();
     ~Renderer();
 
-    void drawGraphics(std::array<unsigned short, 64 * 32>& frame);
+    // blit framebuffer to screen
+    void drawGraphics(const std::array<unsigned short, 64 * 32>& frame);
     void setTitleBar(std::string title);
-    void changeSize(signed int diff);
+    // update renderer scale to match window size
+    void changeSize();
 
 private:
-    int scale = 8;
-
-    std::unique_ptr<SDL_Window, SDL_Deleter> window;
-    std::unique_ptr<SDL_Renderer, SDL_Deleter> renderer;
-    std::unique_ptr<SDL_Texture, SDL_Deleter> texture;
+    const std::unique_ptr<SDL_Window, SDL_Deleter> window;
+    const std::unique_ptr<SDL_Renderer, SDL_Deleter> renderer;
+    const std::unique_ptr<SDL_Texture, SDL_Deleter> texture;
 };

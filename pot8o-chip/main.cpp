@@ -6,8 +6,8 @@
 int main(int argc, char* argv[]) {
     SDL_Init(SDL_INIT_EVERYTHING);
 
+    // get path from CLI otherwise wait for input
     std::string path;
-
     if (argc <= 1) {
         std::cin >> path;
     } else {

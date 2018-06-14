@@ -4,46 +4,65 @@
 #include "keypad.h"
 #include "renderer.h"
 
-Keypad::Keypad(Chip8* chip8, Renderer* renderer) : chip8(*chip8), renderer(*renderer) {
-    keyboard_state.reset(SDL_GetKeyboardState(nullptr));
-}
+Keypad::Keypad(Chip8* chip8)
+    : chip8(*chip8),
+      keyboard_state(std::unique_ptr<const unsigned char>(SDL_GetKeyboardState(nullptr))) {}
 
 Keypad::~Keypad() = default;
 
 unsigned char Keypad::waitForInput() {
-    while (SDL_PollEvent(nullptr)) {
+    SDL_Event* event = nullptr;
+    while (SDL_PollEvent(event)) {
         for (unsigned char i = 0; i < keys.size(); i++) {
             if (keyboard_state.get()[keys[i]])
                 return i;
+        }
+        if (event) {
+            if (event->type == SDL_WINDOWEVENT)
+                chip8.changeWindowSize();
         }
     }
     exit(1);
 }
 
 bool Keypad::keyIsPressed(unsigned char key) {
-    SDL_PollEvent(nullptr);
+    SDL_Event* event = nullptr;
+    SDL_PollEvent(event);
+    if (event) {
+        if (event->type == SDL_WINDOWEVENT)
+            chip8.changeWindowSize();
+    }
     return keyboard_state.get()[keys[key]];
 }
 
 void Keypad::checkInput() {
-    SDL_PollEvent(nullptr);
+    SDL_Event* event = nullptr;
+    SDL_PollEvent(event);
+
     if (keyboard_state.get()[SDL_SCANCODE_ESCAPE])
         exit(0);
-    if (keyboard_state.get()[SDL_SCANCODE_RIGHT])
+    if (keyboard_state.get()[SDL_SCANCODE_RIGHT] | keyboard_state.get()[SDL_SCANCODE_UP])
         chip8.changeSpeed(1);
-    if (keyboard_state.get()[SDL_SCANCODE_LEFT])
+    if (keyboard_state.get()[SDL_SCANCODE_LEFT] | keyboard_state.get()[SDL_SCANCODE_DOWN])
         chip8.changeSpeed(-1);
-    if (keyboard_state.get()[SDL_SCANCODE_UP])
-        renderer.changeSize(1);
-    if (keyboard_state.get()[SDL_SCANCODE_DOWN])
-        renderer.changeSize(-1);
-    if (keyboard_state.get()[SDL_SCANCODE_L]) {
+    if (keyboard_state.get()[SDL_SCANCODE_L])
+        chip8.limitSpeed = true;
+    if (keyboard_state.get()[SDL_SCANCODE_U])
+        chip8.limitSpeed = false;
+    if (keyboard_state.get()[SDL_SCANCODE_C]) {
         std::string game;
         std::cin >> game;
         chip8.loadGame(game);
     }
-    if (keyboard_state.get()[SDL_SCANCODE_U])
-        chip8.limitSpeed ^= 1;
+    if (keyboard_state.get()[SDL_SCANCODE_P])
+        chip8.paused = true;
+    if (keyboard_state.get()[SDL_SCANCODE_G])
+        chip8.paused = false;
+
+    if (event) {
+        if (event->type == SDL_WINDOWEVENT)
+            chip8.changeWindowSize();
+    }
 }
 
 const std::array<const SDL_Scancode, 0x10> Keypad::keys{
