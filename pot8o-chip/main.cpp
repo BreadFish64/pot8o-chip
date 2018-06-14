@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 #include <SDL.h>
 #include "chip8.h"
 #include "main.h"
