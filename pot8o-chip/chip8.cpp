@@ -243,7 +243,7 @@ void Chip8::CPU::DRW_Vx_Vy_nibble() {
             if (byte & (1 << i)) {
                 if (pixel)
                     system.V[0xF] = true;
-                pixel ^= 0xFF;
+                pixel ^= 0xFFFF;
             }
         }
     }
