@@ -4,7 +4,7 @@
 #include <istream>
 #include "chip8.h"
 
-Chip8::Chip8() : renderer(std::make_unique<Renderer>()), keypad(std::make_unique<Keypad>(this)) {
+Chip8::Chip8() : frontend(std::make_unique<Frontend>(this)) {
     frame_length = std::chrono::duration_cast<std::chrono::steady_clock::duration>(
         std::chrono::duration<double, std::milli>(1000.0 / target_clock_speed));
 }
@@ -15,11 +15,11 @@ void Chip8::changeSpeed(signed int diff) {
     target_clock_speed = (target_clock_speed + diff > 0) ? (target_clock_speed + diff) : 1;
     frame_length = std::chrono::duration_cast<std::chrono::steady_clock::duration>(
         std::chrono::duration<double, std::milli>(1000.0 / target_clock_speed));
-    renderer->setTitleBar(title + " - " + std::to_string(target_clock_speed) + "Hz");
+    frontend->setTitleBar(title + " - " + std::to_string(target_clock_speed) + "Hz");
 }
 
 void Chip8::changeWindowSize() {
-    renderer->changeSize();
+    frontend->changeSize();
 }
 
 void Chip8::initialize() {
@@ -49,7 +49,7 @@ void Chip8::loadGame(std::string path) {
         path.erase(0, 1);
     title = path.substr(path.find_last_of('/') + 1, path.size() - path.find_last_of('/' - 1));
     title = title.substr(title.find_last_of('\\') + 1, title.size() - title.find_last_of('\\') - 1);
-    renderer->setTitleBar(title + " - " + std::to_string(target_clock_speed) + "Hz");
+    frontend->setTitleBar(title + " - " + std::to_string(target_clock_speed) + "Hz");
     std::ifstream file(path, std::ios::binary);
     std::copy(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>(),
               memory.begin() + 0x200);
@@ -60,7 +60,7 @@ void Chip8::emulate() {
     while (true) {
         if (!paused)
             emulateCycle();
-        keypad->checkInput();
+        frontend->checkInput();
         if (limitSpeed)
             std::this_thread::sleep_until(
                 frame_start +=
@@ -254,7 +254,7 @@ void Chip8::CPU::DRW_Vx_Vy_nibble() {
         }
     }
 
-    system.renderer->drawGraphics(system.frame_buffer);
+    system.frontend->drawGraphics(system.frame_buffer);
     system.program_counter += 2;
 }
 
@@ -263,11 +263,11 @@ void Chip8::CPU::split_E() {
 }
 
 void Chip8::CPU::SKP_Vx() {
-    system.program_counter += system.keypad->keyIsPressed(system.Vx()) ? 4 : 2;
+    system.program_counter += system.frontend->keyIsPressed(system.Vx()) ? 4 : 2;
 }
 
 void Chip8::CPU::SKNP_Vx() {
-    system.program_counter += system.keypad->keyIsPressed(system.Vx()) ? 2 : 4;
+    system.program_counter += system.frontend->keyIsPressed(system.Vx()) ? 2 : 4;
 }
 
 void Chip8::CPU::split_F() {
@@ -280,7 +280,7 @@ void Chip8::CPU::LD_Vx_DT() {
 }
 
 void Chip8::CPU::LD_Vx_K() {
-    system.Vx() = system.keypad->waitForInput();
+    system.Vx() = system.frontend->waitForInput();
     system.program_counter += 2;
 }
 

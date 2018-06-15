@@ -133,8 +133,7 @@ private:
     // system font to be loaded into memory
     static const std::array<const uint8_t, 80> font;
 
-    const std::unique_ptr<Renderer> renderer = nullptr;
-    const std::unique_ptr<Keypad> keypad = nullptr;
+    const std::unique_ptr<Frontend> frontend = nullptr;
     CPU cpu = CPU(this);
 
     std::string title;
