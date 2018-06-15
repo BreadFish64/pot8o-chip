@@ -19,7 +19,7 @@ public:
     ~Renderer();
 
     // blit framebuffer to screen
-    void drawGraphics(const std::array<unsigned short, 64 * 32>& frame);
+    void drawGraphics(const std::array<uint16_t, 64 * 32>& frame);
     void setTitleBar(std::string title);
     // update renderer scale to match window size
     void changeSize();

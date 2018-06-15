@@ -17,7 +17,7 @@ Renderer::Renderer()
 
 Renderer::~Renderer() = default;
 
-void Renderer::drawGraphics(const std::array<unsigned short, 64 * 32>& frame) {
+void Renderer::drawGraphics(const std::array<uint16_t, 64 * 32>& frame) {
     SDL_UpdateTexture(texture.get(), NULL, &frame, 128);
     SDL_RenderCopy(renderer.get(), texture.get(), NULL, NULL);
     SDL_RenderPresent(renderer.get());

@@ -5,15 +5,15 @@
 #include "renderer.h"
 
 Keypad::Keypad(Chip8* chip8)
-    : chip8(*chip8),
-      keyboard_state(std::unique_ptr<const unsigned char>(SDL_GetKeyboardState(nullptr))) {}
+    : chip8(*chip8), keyboard_state(std::unique_ptr<const uint8_t>(SDL_GetKeyboardState(nullptr))) {
+}
 
 Keypad::~Keypad() = default;
 
-unsigned char Keypad::waitForInput() {
+uint8_t Keypad::waitForInput() {
     SDL_Event* event = nullptr;
     while (SDL_PollEvent(event)) {
-        for (unsigned char i = 0; i < keys.size(); i++) {
+        for (uint8_t i = 0; i < keys.size(); i++) {
             if (keyboard_state.get()[keys[i]])
                 return i;
         }
@@ -25,7 +25,7 @@ unsigned char Keypad::waitForInput() {
     exit(1);
 }
 
-bool Keypad::keyIsPressed(unsigned char key) {
+bool Keypad::keyIsPressed(uint8_t key) {
     SDL_Event* event = nullptr;
     SDL_PollEvent(event);
     if (event) {

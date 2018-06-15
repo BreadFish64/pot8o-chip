@@ -12,9 +12,9 @@ public:
     ~Keypad();
 
     // wait until a key is pressed
-    unsigned char waitForInput();
+    uint8_t waitForInput();
     // check if a key is pressed
-    bool keyIsPressed(unsigned char key);
+    bool keyIsPressed(uint8_t key);
     // check input between cycles
     void checkInput();
 
@@ -25,5 +25,5 @@ private:
     Chip8& chip8;
 
     // pointer to SDL keyboard state
-    const std::unique_ptr<const unsigned char> keyboard_state = nullptr;
+    const std::unique_ptr<const uint8_t> keyboard_state = nullptr;
 };

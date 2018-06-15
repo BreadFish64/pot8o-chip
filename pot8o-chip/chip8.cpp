@@ -5,7 +5,6 @@
 #include "chip8.h"
 
 Chip8::Chip8() : renderer(std::make_unique<Renderer>()), keypad(std::make_unique<Keypad>(this)) {
-
     frame_length = std::chrono::duration_cast<std::chrono::steady_clock::duration>(
         std::chrono::duration<double, std::milli>(1000.0 / target_clock_speed));
 }
@@ -83,35 +82,35 @@ void Chip8::emulateCycle() {
     }
 }
 
-inline unsigned char Chip8::op() {
+inline uint8_t Chip8::op() {
     return (opcode & 0xF000) >> 12;
 }
 
-inline unsigned char Chip8::X() {
+inline uint8_t Chip8::X() {
     return (opcode & 0x0F00) >> 8;
 }
 
-inline unsigned char Chip8::Y() {
+inline uint8_t Chip8::Y() {
     return (opcode & 0x00F0) >> 4;
 }
 
-inline unsigned char& Chip8::Vx() {
+inline uint8_t& Chip8::Vx() {
     return V[X()];
 }
 
-inline unsigned char& Chip8::Vy() {
+inline uint8_t& Chip8::Vy() {
     return V[Y()];
 }
 
-inline unsigned char Chip8::n() {
+inline uint8_t Chip8::n() {
     return opcode & 0x000F;
 }
 
-inline unsigned char Chip8::kk() {
+inline uint8_t Chip8::kk() {
     return opcode & 0x00FF;
 }
 
-inline unsigned short Chip8::nnn() {
+inline uint16_t Chip8::nnn() {
     return opcode & 0x0FFF;
 }
 
@@ -189,9 +188,9 @@ void Chip8::CPU::XOR_Vx_Vy() {
 }
 
 void Chip8::CPU::ADD_Vx_Vy() {
-    unsigned short result = system.Vx() + system.Vy();
+    uint16_t result = system.Vx() + system.Vy();
     system.V[0xF] = result > 0xFF;
-    system.Vx() = static_cast<unsigned char>(result & 0xFF);
+    system.Vx() = static_cast<uint8_t>(result & 0xFF);
     system.program_counter += 2;
 }
 
@@ -238,15 +237,15 @@ void Chip8::CPU::RND_Vx_byte() {
 }
 
 void Chip8::CPU::DRW_Vx_Vy_nibble() {
-    unsigned char x = system.Vx() + 71;
-    unsigned char y = system.Vy();
-    unsigned char height = system.n();
+    uint8_t x = system.Vx() + 71;
+    uint8_t y = system.Vy();
+    uint8_t height = system.n();
     system.V[0xF] = false;
 
-    for (unsigned char row = 0; row < height; row++) {
-        unsigned char byte = system.memory[system.I + row];
+    for (uint8_t row = 0; row < height; row++) {
+        uint8_t byte = system.memory[system.I + row];
         for (char i = 0; i < 8; i++) {
-            unsigned short& pixel = system.frame_buffer[((y + row) % 32) * 64 + (x - i) % 64];
+            uint16_t& pixel = system.frame_buffer[((y + row) % 32) * 64 + (x - i) % 64];
             if (byte & (1 << i)) {
                 if (pixel)
                     system.V[0xF] = true;
@@ -306,7 +305,7 @@ void Chip8::CPU::LD_F_Vx() {
 }
 
 void Chip8::CPU::LD_B_Vx() {
-    unsigned char num = system.Vx();
+    uint8_t num = system.Vx();
     system.memory[system.I] = num / 100;
     num %= 100;
     system.memory[system.I + 1] = num / 10;
@@ -328,7 +327,7 @@ void Chip8::CPU::LD_Vx_I() {
 }
 
 // clang-format off
-const std::array<const unsigned char, 0x50> Chip8::font{
+const std::array<const uint8_t, 0x50> Chip8::font{
 	//0
 	0b11110000,
 	0b10010000,

@@ -131,7 +131,7 @@ public:
 
 private:
     // system font to be loaded into memory
-    static const std::array<const unsigned char, 80> font;
+    static const std::array<const uint8_t, 80> font;
 
     const std::unique_ptr<Renderer> renderer = nullptr;
     const std::unique_ptr<Keypad> keypad = nullptr;
@@ -148,22 +148,22 @@ private:
         std::uniform_int_distribution<std::mt19937::result_type>(0x00, 0xFF);
 
     // contains pixel information
-    std::array<unsigned short, 64 * 32> frame_buffer;
-    std::array<unsigned char, 0x1000> memory;
+    std::array<uint16_t, 64 * 32> frame_buffer;
+    std::array<uint8_t, 0x1000> memory;
     // system registers
-    std::array<unsigned char, 0x10> V;
+    std::array<uint8_t, 0x10> V;
     // contains addresses to return from calls
-    std::vector<unsigned short> stack;
+    std::vector<uint16_t> stack;
     // current instruction
-    unsigned short opcode;
+    uint16_t opcode;
     // contains a single memory address
-    unsigned short I;
+    uint16_t I;
     // location in memory corresponding to the current instruction
-    unsigned short program_counter;
+    uint16_t program_counter;
     // counts down each cycle
-    unsigned char delay_timer;
+    uint8_t delay_timer;
     // counts down each cycle, beeps when 0 is hit
-    unsigned char sound_timer;
+    uint8_t sound_timer;
 
     // clear emulated system state
     void initialize();
@@ -171,19 +171,19 @@ private:
     void emulateCycle();
 
     // returns first nibble of opcode
-    inline unsigned char op();
+    inline uint8_t op();
     // returns second nibble of opcode
-    inline unsigned char X();
+    inline uint8_t X();
     // returns third nibble of opcode
-    inline unsigned char Y();
+    inline uint8_t Y();
     // returns reference to register X
-    inline unsigned char& Vx();
+    inline uint8_t& Vx();
     // returns reference to register Y
-    inline unsigned char& Vy();
+    inline uint8_t& Vy();
     // returns last nibble of opcode
-    inline unsigned char n();
+    inline uint8_t n();
     // returns last byte of opcode
-    inline unsigned char kk();
+    inline uint8_t kk();
     // returns last 3 nibbles of opcode
-    inline unsigned short nnn();
+    inline uint16_t nnn();
 };
