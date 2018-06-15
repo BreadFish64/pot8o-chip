@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <thread>
 #include <SDL.h>
 #include "chip8.h"
 #include "main.h"
@@ -17,7 +18,8 @@ int main(int argc, char* argv[]) {
 
     Chip8 chip8;
     chip8.loadGame(path);
-    chip8.emulate();
+    std::thread emu_thread([&chip8] { chip8.emulate(); });
+    chip8.frontend->mainLoop();
 
     return 0;
 }

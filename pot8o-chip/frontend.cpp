@@ -1,7 +1,7 @@
 #include <iostream>
+#include <thread>
 #include <SDL.h>
 #include "chip8.h"
-#include "renderer.h"
 
 Frontend::Frontend(Chip8* chip8)
     : chip8(*chip8), keyboard_state(std::unique_ptr<const uint8_t>(SDL_GetKeyboardState(nullptr))),
@@ -20,65 +20,60 @@ Frontend::Frontend(Chip8* chip8)
 
 Frontend::~Frontend() = default;
 
-uint8_t Frontend::waitForInput() {
+void Frontend::mainLoop() {
     SDL_Event* event = nullptr;
+    frame_start = std::chrono::steady_clock::now();
+
     while (SDL_PollEvent(event)) {
-        for (uint8_t i = 0; i < keys.size(); i++) {
-            if (keyboard_state.get()[keys[i]])
-                return i;
-        }
         if (event) {
             if (event->type == SDL_WINDOWEVENT)
-                chip8.changeWindowSize();
+                changeSize();
+        }
+
+        for (char i = 0; i < keys.size(); i++) {
+            keypad_state[i] = keyboard_state.get()[keys[i]];
+        }
+
+        if (keyboard_state.get()[SDL_SCANCODE_ESCAPE])
+            exit(0);
+        if (keyboard_state.get()[SDL_SCANCODE_RIGHT] | keyboard_state.get()[SDL_SCANCODE_UP])
+            chip8.changeSpeed(1);
+        if (keyboard_state.get()[SDL_SCANCODE_LEFT] | keyboard_state.get()[SDL_SCANCODE_DOWN])
+            chip8.changeSpeed(-1);
+        if (keyboard_state.get()[SDL_SCANCODE_L])
+            chip8.limitSpeed = true;
+        if (keyboard_state.get()[SDL_SCANCODE_U])
+            chip8.limitSpeed = false;
+        if (keyboard_state.get()[SDL_SCANCODE_C]) {
+            std::string game;
+            std::cin >> game;
+            chip8.loadGame(game);
+        }
+        if (keyboard_state.get()[SDL_SCANCODE_P])
+            chip8.paused = true;
+        if (keyboard_state.get()[SDL_SCANCODE_G])
+            chip8.paused = false;
+
+        SDL_UpdateTexture(texture.get(), NULL, &framebuffer.load(), 128);
+        SDL_RenderCopy(renderer.get(), texture.get(), NULL, NULL);
+        SDL_RenderPresent(renderer.get());
+
+        std::this_thread::sleep_until(frame_start += frame_time);
+    }
+}
+
+uint8_t Frontend::waitForInput() {
+    while (true) {
+        for (char i = 0; i < keypad_state.size(); i++) {
+            if (keypad_state[i])
+                return i;
         }
     }
-    exit(1);
+    return UINT8_MAX;
 }
 
 bool Frontend::keyIsPressed(uint8_t key) {
-    SDL_Event* event = nullptr;
-    SDL_PollEvent(event);
-    if (event) {
-        if (event->type == SDL_WINDOWEVENT)
-            chip8.changeWindowSize();
-    }
-    return keyboard_state.get()[keys[key]];
-}
-
-void Frontend::checkInput() {
-    SDL_Event* event = nullptr;
-    SDL_PollEvent(event);
-
-    if (keyboard_state.get()[SDL_SCANCODE_ESCAPE])
-        exit(0);
-    if (keyboard_state.get()[SDL_SCANCODE_RIGHT] | keyboard_state.get()[SDL_SCANCODE_UP])
-        chip8.changeSpeed(1);
-    if (keyboard_state.get()[SDL_SCANCODE_LEFT] | keyboard_state.get()[SDL_SCANCODE_DOWN])
-        chip8.changeSpeed(-1);
-    if (keyboard_state.get()[SDL_SCANCODE_L])
-        chip8.limitSpeed = true;
-    if (keyboard_state.get()[SDL_SCANCODE_U])
-        chip8.limitSpeed = false;
-    if (keyboard_state.get()[SDL_SCANCODE_C]) {
-        std::string game;
-        std::cin >> game;
-        chip8.loadGame(game);
-    }
-    if (keyboard_state.get()[SDL_SCANCODE_P])
-        chip8.paused = true;
-    if (keyboard_state.get()[SDL_SCANCODE_G])
-        chip8.paused = false;
-
-    if (event) {
-        if (event->type == SDL_WINDOWEVENT)
-            chip8.changeWindowSize();
-    }
-}
-
-void Frontend::drawGraphics(const std::array<uint16_t, 64 * 32>& frame) {
-    SDL_UpdateTexture(texture.get(), NULL, &frame, 128);
-    SDL_RenderCopy(renderer.get(), texture.get(), NULL, NULL);
-    SDL_RenderPresent(renderer.get());
+    return keypad_state[key];
 }
 
 void Frontend::setTitleBar(std::string title) {

@@ -2,10 +2,11 @@
 #include <fstream>
 #include <iostream>
 #include <istream>
+#include <thread>
 #include "chip8.h"
 
 Chip8::Chip8() : frontend(std::make_unique<Frontend>(this)) {
-    frame_length = std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+    cycle_length = std::chrono::duration_cast<std::chrono::steady_clock::duration>(
         std::chrono::duration<double, std::milli>(1000.0 / target_clock_speed));
 }
 
@@ -13,13 +14,9 @@ Chip8::~Chip8() = default;
 
 void Chip8::changeSpeed(signed int diff) {
     target_clock_speed = (target_clock_speed + diff > 0) ? (target_clock_speed + diff) : 1;
-    frame_length = std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+    cycle_length = std::chrono::duration_cast<std::chrono::steady_clock::duration>(
         std::chrono::duration<double, std::milli>(1000.0 / target_clock_speed));
     frontend->setTitleBar(title + " - " + std::to_string(target_clock_speed) + "Hz");
-}
-
-void Chip8::changeWindowSize() {
-    frontend->changeSize();
 }
 
 void Chip8::initialize() {
@@ -56,15 +53,12 @@ void Chip8::loadGame(std::string path) {
 }
 
 void Chip8::emulate() {
-    frame_start = std::chrono::steady_clock::now();
+    cycle_start = std::chrono::steady_clock::now();
     while (true) {
         if (!paused)
             emulateCycle();
-        frontend->checkInput();
         if (limitSpeed)
-            std::this_thread::sleep_until(
-                frame_start +=
-                std::chrono::duration_cast<std::chrono::steady_clock::duration>(frame_length));
+            std::this_thread::sleep_until(cycle_start += cycle_length);
     }
 }
 
@@ -249,12 +243,12 @@ void Chip8::CPU::DRW_Vx_Vy_nibble() {
             if (byte & (1 << i)) {
                 if (pixel)
                     system.V[0xF] = true;
-                pixel = ~pixel;
+                pixel ^= 0xFF;
             }
         }
     }
 
-    system.frontend->drawGraphics(system.frame_buffer);
+    system.frontend->framebuffer.store(system.frame_buffer);
     system.program_counter += 2;
 }
 

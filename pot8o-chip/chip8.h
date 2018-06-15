@@ -1,16 +1,32 @@
 #pragma once
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <functional>
 #include <memory>
 #include <random>
 #include <string>
 #include <vector>
-#include "keypad.h"
-#include "renderer.h"
+#include "frontend.h"
 
 class Chip8 {
 public:
+    explicit Chip8();
+    ~Chip8();
+
+    // load game into memory
+    void loadGame(std::string path);
+    // main loop
+    void emulate();
+    // changes internal clock rate
+    void changeSpeed(signed int diff);
+
+    const std::unique_ptr<Frontend> frontend = nullptr;
+
+    std::atomic_bool limitSpeed = true;
+    std::atomic_bool paused = false;
+
+private:
     // contains CPU instructions and jump tables
     class CPU {
     public:
@@ -115,31 +131,15 @@ public:
         void LD_Vx_I();
     };
 
-    explicit Chip8();
-    ~Chip8();
-
-    // load game into memory
-    void loadGame(std::string path);
-    // main loop
-    void emulate();
-    // changes internal clock rate
-    void changeSpeed(signed int diff);
-    // tells renderer the window size has been changed
-    void changeWindowSize();
-    bool limitSpeed = true;
-    bool paused = false;
-
-private:
     // system font to be loaded into memory
     static const std::array<const uint8_t, 80> font;
 
-    const std::unique_ptr<Frontend> frontend = nullptr;
     CPU cpu = CPU(this);
 
     std::string title;
-    int target_clock_speed = 60;
-    std::chrono::steady_clock::duration frame_length;
-    std::chrono::time_point<std::chrono::steady_clock> frame_start;
+    std::atomic_int target_clock_speed = 60;
+    std::atomic<std::chrono::steady_clock::duration> cycle_length;
+    std::chrono::time_point<std::chrono::steady_clock> cycle_start;
 
     // used for random number generation in intruction 0xC
     std::mt19937 rng;
