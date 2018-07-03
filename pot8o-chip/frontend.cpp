@@ -1,4 +1,5 @@
 #include <iostream>
+#include <mutex>
 #include <thread>
 #include <SDL.h>
 #include "chip8.h"
@@ -54,9 +55,11 @@ void Frontend::mainLoop() {
         if (keyboard_state.get()[SDL_SCANCODE_G])
             chip8.paused = false;
 
-        SDL_UpdateTexture(texture.get(), NULL, &framebuffer.load(), 128);
+        chip8.frame_buffer.second.lock();
+        SDL_UpdateTexture(texture.get(), NULL, chip8.frame_buffer.first.data(), 128);
         SDL_RenderCopy(renderer.get(), texture.get(), NULL, NULL);
         SDL_RenderPresent(renderer.get());
+        chip8.frame_buffer.second.unlock();
 
         std::this_thread::sleep_until(frame_start += frame_time);
     }

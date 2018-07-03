@@ -26,7 +26,7 @@ void Chip8::initialize() {
     opcode = 0;
     I = 0;
 
-    std::fill(frame_buffer.begin(), frame_buffer.end(), 0);
+    std::fill(frame_buffer.first.begin(), frame_buffer.first.end(), 0);
     std::fill(V.begin(), V.end(), 0);
     std::fill(memory.begin(), memory.end(), 0);
 
@@ -57,6 +57,7 @@ void Chip8::emulate() {
     while (true) {
         if (!paused)
             emulateCycle();
+        cycle_count++;
         if (limitSpeed)
             std::this_thread::sleep_until(cycle_start += cycle_length);
     }
@@ -71,7 +72,7 @@ void Chip8::emulateCycle() {
 
     if (sound_timer > 0) {
         if (sound_timer == 1)
-            std::cout << "BEEP" << std::endl;
+            printf("BEEP\n");
         --sound_timer;
     }
 }
@@ -117,7 +118,8 @@ void Chip8::CPU::split_0() {
 }
 
 void Chip8::CPU::CLS() {
-    std::fill(std::execution::par_unseq, system.frame_buffer.begin(), system.frame_buffer.end(), 0);
+    std::fill(std::execution::par_unseq, system.frame_buffer.first.begin(),
+              system.frame_buffer.first.end(), 0);
     system.program_counter += 2;
 }
 
@@ -231,24 +233,25 @@ void Chip8::CPU::RND_Vx_byte() {
 }
 
 void Chip8::CPU::DRW_Vx_Vy_nibble() {
-    uint8_t x = system.Vx() + 71;
+    uint8_t x = system.Vx() + 7;
     uint8_t y = system.Vy();
     uint8_t height = system.n();
     system.V[0xF] = false;
 
+    system.frame_buffer.second.lock();
     for (uint8_t row = 0; row < height; row++) {
         uint8_t byte = system.memory[system.I + row];
-        for (char i = 0; i < 8; i++) {
-            uint16_t& pixel = system.frame_buffer[((y + row) % 32) * 64 + (x - i) % 64];
-            if (byte & (1 << i)) {
+        for (uint8_t column = 0; column < 8; column++) {
+            uint16_t& pixel = system.frame_buffer.first[((y + row) % 32) * 64 + (x - column) % 64];
+            if (byte & (1 << column)) {
                 if (pixel)
                     system.V[0xF] = true;
                 pixel ^= 0xFF;
             }
         }
     }
+    system.frame_buffer.second.unlock();
 
-    system.frontend->framebuffer.store(system.frame_buffer);
     system.program_counter += 2;
 }
 

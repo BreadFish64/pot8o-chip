@@ -4,6 +4,7 @@
 #include <chrono>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <random>
 #include <string>
 #include <vector>
@@ -25,6 +26,9 @@ public:
 
     std::atomic_bool limitSpeed = true;
     std::atomic_bool paused = false;
+
+    // contains pixel information
+    std::pair<std::array<uint16_t, 64 * 32>, std::mutex> frame_buffer;
 
 private:
     // contains CPU instructions and jump tables
@@ -136,6 +140,7 @@ private:
 
     CPU cpu = CPU(this);
 
+    unsigned long long cycle_count;
     std::string title;
     std::atomic_int target_clock_speed = 60;
     std::atomic<std::chrono::steady_clock::duration> cycle_length;
@@ -146,8 +151,6 @@ private:
     std::uniform_int_distribution<std::mt19937::result_type> dist =
         std::uniform_int_distribution<std::mt19937::result_type>(0x00, 0xFF);
 
-    // contains pixel information
-    std::array<uint16_t, 64 * 32> frame_buffer;
     std::array<uint8_t, 0x1000> memory;
     // system registers
     std::array<uint8_t, 0x10> V;
