@@ -4,7 +4,7 @@ A Chip8 Emulator written in C++
 # How to use
 Drag and drop a Chip8 program onto pot8o-chip.exe
 
-or pass it's path as a command line arguement
+or pass it's path as a command line argument
 
 or start the program and enter the path into the console
 
