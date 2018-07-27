@@ -49,5 +49,5 @@ private:
             std::chrono::duration<double, std::milli>(1000.0 / 60.0));
     std::chrono::time_point<std::chrono::steady_clock> frame_start;
     // keys used for the Chip8 keypad
-    static const std::array<const SDL_Scancode, 0x10> keys;
+    static const std::array<SDL_Scancode, 0x10> keys;
 };

@@ -13,9 +13,10 @@ Frontend::Frontend(Chip8* chip8)
       renderer(std::unique_ptr<SDL_Renderer, SDL_Deleter>(
           SDL_CreateRenderer(window.get(), -1, SDL_RENDERER_ACCELERATED), SDL_Deleter())),
       texture(std::unique_ptr<SDL_Texture, SDL_Deleter>(
-          SDL_CreateTexture(renderer.get(), SDL_PIXELFORMAT_RGBA4444, SDL_TEXTUREACCESS_STREAMING,
+          SDL_CreateTexture(renderer.get(), SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING,
                             64, 32),
           SDL_Deleter())) {
+
     SDL_RenderSetScale(renderer.get(), 8.0f, 8.0f);
 }
 
@@ -31,7 +32,7 @@ void Frontend::mainLoop() {
                 changeSize();
         }
 
-        for (char i = 0; i < keys.size(); i++) {
+        for (unsigned char i = 0; i < keys.size(); ++i) {
             keypad_state[i] = keyboard_state.get()[keys[i]];
         }
 
@@ -55,11 +56,11 @@ void Frontend::mainLoop() {
         if (keyboard_state.get()[SDL_SCANCODE_G])
             chip8.paused = false;
 
-        chip8.frame_buffer.second.lock();
-        SDL_UpdateTexture(texture.get(), NULL, chip8.frame_buffer.first.data(), 128);
+        chip8.getFrameBufferLock().lock();
+        SDL_UpdateTexture(texture.get(), NULL, chip8.getFrameBuffer(), 256);
         SDL_RenderCopy(renderer.get(), texture.get(), NULL, NULL);
+        chip8.getFrameBufferLock().unlock();
         SDL_RenderPresent(renderer.get());
-        chip8.frame_buffer.second.unlock();
 
         std::this_thread::sleep_until(frame_start += frame_time);
     }
@@ -101,7 +102,7 @@ void Frontend::SDL_Deleter::operator()(SDL_Texture* p) const {
     SDL_DestroyTexture(p);
 }
 
-const std::array<const SDL_Scancode, 0x10> Frontend::keys{
+const std::array<SDL_Scancode, 0x10> Frontend::keys{
     SDL_SCANCODE_KP_0,     SDL_SCANCODE_KP_1,    SDL_SCANCODE_KP_2,      SDL_SCANCODE_KP_3,
     SDL_SCANCODE_KP_4,     SDL_SCANCODE_KP_5,    SDL_SCANCODE_KP_6,      SDL_SCANCODE_KP_7,
     SDL_SCANCODE_KP_8,     SDL_SCANCODE_KP_9,    SDL_SCANCODE_KP_DIVIDE, SDL_SCANCODE_KP_MULTIPLY,

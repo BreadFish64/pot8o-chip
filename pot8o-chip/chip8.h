@@ -22,13 +22,13 @@ public:
     // changes internal clock rate
     void changeSpeed(signed int diff);
 
+    uint32_t* getFrameBuffer();
+    std::mutex& getFrameBufferLock();
+
     const std::unique_ptr<Frontend> frontend = nullptr;
 
     std::atomic_bool limitSpeed = true;
     std::atomic_bool paused = false;
-
-    // contains pixel information
-    std::pair<std::array<uint16_t, 64 * 32>, std::mutex> frame_buffer;
 
 private:
     // contains CPU instructions and jump tables
@@ -37,20 +37,23 @@ private:
         explicit CPU(Chip8* parent);
         ~CPU();
 
-        // Main jump table
-        static const std::array<const std::function<void(Chip8::CPU&)>, 0x10> opcode_table;
+        inline void execute();
 
     private:
         Chip8& system;
-
+        // Main jump table
+        static const std::array<std::function<void(Chip8::CPU&)>, 0x10> opcode_table;
         // Jump table for opcodes starting with 0x0
-        static const std::array<const std::function<void(Chip8::CPU&)>, 0x100> opcode_table_0;
+        static const std::array<std::function<void(Chip8::CPU&)>, 0x100> opcode_table_0;
         // Jump table for opcodes starting with 0x8
-        static const std::array<const std::function<void(Chip8::CPU&)>, 0x10> opcode_table_8;
+        static const std::array<std::function<void(Chip8::CPU&)>, 0x10> opcode_table_8;
         // Jump table for opcodes starting with 0xE
-        static const std::array<const std::function<void(Chip8::CPU&)>, 0x100> opcode_table_E;
+        static const std::array<std::function<void(Chip8::CPU&)>, 0x100> opcode_table_E;
         // Jump table for opcodes starting with 0xF
-        static const std::array<const std::function<void(Chip8::CPU&)>, 0x100> opcode_table_F;
+        static const std::array<std::function<void(Chip8::CPU&)>, 0x100> opcode_table_F;
+
+        // increase pc by 2
+        inline void step();
 
         // Call sub-table for opcodes starting with 0x0
         void split_0();
@@ -136,7 +139,7 @@ private:
     };
 
     // system font to be loaded into memory
-    static const std::array<const uint8_t, 80> font;
+    static const std::array<uint8_t, 80> font;
 
     CPU cpu = CPU(this);
 
@@ -150,6 +153,10 @@ private:
     std::mt19937 rng;
     std::uniform_int_distribution<std::mt19937::result_type> dist =
         std::uniform_int_distribution<std::mt19937::result_type>(0x00, 0xFF);
+
+    // contains pixel information
+    std::array<uint32_t, 64 * 32> frame_buffer;
+    std::mutex frame_buffer_lock;
 
     std::array<uint8_t, 0x1000> memory;
     // system registers

@@ -1,4 +1,4 @@
-# pot8o-chip
+﻿# pot8o-chip
 A Chip8 Emulator written in C++
 
 # How to use
@@ -15,6 +15,7 @@ https://github.com/dmatlack/chip8/tree/master/roms
 
 # Keybindings
 keypad:
+(keep num lock on, tenkeys only)
 
 0-9
 
@@ -34,9 +35,9 @@ pause: P
 
 play: G
 
-unlock clock speed: U
+◀ ▶: change clock speed
 
-lock clock speed: L
+unlock clock speed: U
 
 change game: C
 
