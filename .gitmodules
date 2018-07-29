@@ -1,4 +1,5 @@
-[submodule "SDL"]
-	path = SDL
-	url = https://github.com/SDL-mirror/SDL
-	ignore = dirty
+[submodule "dynarmic"]
+	path = dynarmic
+	url = https://github.com/BreadFish64/dynarmic
+[submodule "boost"]
+	path = boost	url = https://github.com/citra-emu/ext-boost
