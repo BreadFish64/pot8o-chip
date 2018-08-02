@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <thread>
+#define SDL_MAIN_HANDLED
 #include <SDL.h>
 #include "chip8.h"
 #include "main.h"
