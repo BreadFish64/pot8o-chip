@@ -131,18 +131,6 @@ endif()
 set_property(DIRECTORY APPEND PROPERTY
     COMPILE_DEFINITIONS $<$<CONFIG:Debug>:_DEBUG> $<$<NOT:$<CONFIG:Debug>>:NDEBUG>)
 
-# System imported libraries
-# ======================
-
-find_package(Boost 1.66.0 QUIET)
-if (NOT Boost_FOUND)
-    message(STATUS "Boost 1.66.0 or newer not found, falling back to externals")
-
-    set(BOOST_ROOT "${CMAKE_SOURCE_DIR}/boost")
-    set(Boost_NO_SYSTEM_PATHS OFF)
-    find_package(Boost QUIET REQUIRED)
-endif()
-
 set(SDL2_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/SDL2/include" CACHE PATH "Path to SDL2 headers")
 set(SDL2_LIBRARY "${CMAKE_SOURCE_DIR}/SDL2/lib/x64/SDL2.lib" CACHE PATH "Path to SDL2 library")
 set(SDL2_DLL_DIR "${CMAKE_SOURCE_DIR}/SDL2/lib/x64/" CACHE PATH "Path to SDL2.dll")
@@ -173,4 +161,4 @@ function(create_target_directory_groups target_name)
 endfunction()
 
 add_subdirectory(pot8o-chip)
-add_subdirectory(dynarmic)
+add_subdirectory(xbyak)

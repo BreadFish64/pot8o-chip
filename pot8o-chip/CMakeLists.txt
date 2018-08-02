@@ -9,7 +9,7 @@ add_executable(pot8o-chip WIN32
 
 create_target_directory_groups(pot8o-chip)
 
-target_link_libraries(pot8o-chip PRIVATE SDL2 dynarmic)
+target_link_libraries(pot8o-chip PRIVATE SDL2 xbyak)
 
 ###########################################
 # Copyright 2016 Citra Emulator Project

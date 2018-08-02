@@ -1,5 +1,3 @@
-[submodule "dynarmic"]
-	path = dynarmic
-	url = https://github.com/BreadFish64/dynarmic
-[submodule "boost"]
-	path = boost	url = https://github.com/citra-emu/ext-boost
+[submodule "xbyak"]
+	path = xbyak
+	url = https://github.com/herumi/xbyak
