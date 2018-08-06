@@ -139,6 +139,8 @@ add_library(SDL2 INTERFACE)
 target_link_libraries(SDL2 INTERFACE "${SDL2_LIBRARY}")
 target_include_directories(SDL2 INTERFACE "${SDL2_INCLUDE_DIR}")
 
+include_directories("${CMAKE_SOURCE_DIR}/xbyak/xbyak")
+
 # Include source code
 # ===================
 

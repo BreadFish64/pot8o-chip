@@ -6,6 +6,11 @@
 #include "chip8.h"
 #include "main.h"
 
+#define XBYAK_NO_OP_NAMES
+#include <xbyak_util.h>
+
+class Interpreter;
+
 int main(int argc, char* argv[]) {
     SDL_Init(SDL_INIT_EVERYTHING);
 

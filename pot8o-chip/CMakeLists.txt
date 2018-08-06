@@ -1,15 +1,19 @@
-add_executable(pot8o-chip WIN32
+add_executable(pot8o-chip
 	main.h
 	main.cpp
     chip8.h
 	chip8.cpp
+	interpreter.h
+	interpreter.cpp
+	dynarec.h
+	dynarec.cpp
 	frontend.h
 	frontend.cpp
 )
 
 create_target_directory_groups(pot8o-chip)
 
-target_link_libraries(pot8o-chip PRIVATE SDL2 xbyak)
+target_link_libraries(pot8o-chip PRIVATE SDL2)
 
 ###########################################
 # Copyright 2016 Citra Emulator Project

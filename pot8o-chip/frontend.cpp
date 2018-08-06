@@ -46,11 +46,6 @@ void Frontend::mainLoop() {
             chip8.limitSpeed = true;
         if (keyboard_state.get()[SDL_SCANCODE_U])
             chip8.limitSpeed = false;
-        if (keyboard_state.get()[SDL_SCANCODE_C]) {
-            std::string game;
-            std::cin >> game;
-            chip8.loadGame(game);
-        }
         if (keyboard_state.get()[SDL_SCANCODE_P])
             chip8.paused = true;
         if (keyboard_state.get()[SDL_SCANCODE_G])
