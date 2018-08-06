@@ -4,10 +4,10 @@
 #include <istream>
 #include <thread>
 #include "chip8.h"
+#include "dynarec.h"
 #include "interpreter.h"
 
-Chip8::Chip8()
-    : frontend(std::make_unique<Frontend>(this)), cpu(std::make_unique<Interpreter>(this)) {
+Chip8::Chip8() : frontend(std::make_unique<Frontend>(this)), cpu(std::make_unique<Dynarec>(this)) {
     cycle_length = std::chrono::duration_cast<std::chrono::steady_clock::duration>(
         std::chrono::duration<double, std::milli>(1000.0 / target_clock_speed));
     std::copy(font.begin(), font.end(), memory.begin());
