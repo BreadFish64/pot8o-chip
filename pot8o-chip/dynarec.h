@@ -3,8 +3,12 @@
 #include <array>
 #include <functional>
 #include <unordered_map>
+#include <vector>
+#include <windows.h>
 
 #include "chip8.h"
+
+using CachedChunk = unsigned char (*)();
 
 class Dynarec : public CPU {
 public:
@@ -142,4 +146,10 @@ private:
     // Read registers V[0] through V[x] from memory starting at location I
     void LD_Vx_I(Opcode& opcode);
     //\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//
+};
+
+class ChunkOfCode : std::vector<uint8_t> {
+public:
+    static DWORD page_size;
+    CachedChunk lockAndLoad();
 };

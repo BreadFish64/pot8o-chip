@@ -93,6 +93,15 @@ inline uint8_t& Dynarec::Vy(Opcode& opcode) {
     return V[opcode.Y()];
 }
 
+CachedChunk ChunkOfCode::lockAndLoad() {
+    auto const buffer = VirtualAlloc(nullptr, page_size, MEM_COMMIT, PAGE_READWRITE);
+    std::copy(std::execution::par_unseq, begin(), end(), buffer);
+    DWORD dummy;
+    VirtualProtect(buffer, size(), PAGE_EXECUTE_READ, &dummy);
+    return reinterpret_cast<CachedChunk>(buffer);
+}
+
+/*
 void Dynarec::split_0(Opcode& opcode) {
     opcode_table_0.at(opcode.kk())(*this, opcode);
 }
@@ -342,3 +351,4 @@ Dynarec::OpcodeMap Dynarec::opcode_table_F{
     {0x18, &Dynarec::LD_ST_Vx}, {0x1E, &Dynarec::ADD_I_Vx}, {0x29, &Dynarec::LD_F_Vx},
     {0x33, &Dynarec::LD_B_Vx},  {0x55, &Dynarec::LD_I_Vx},  {0x65, &Dynarec::LD_Vx_I},
 };
+*/
