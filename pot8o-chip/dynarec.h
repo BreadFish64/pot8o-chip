@@ -16,6 +16,10 @@ public:
 private:
     Chip8& system;
 
+    using InstructionList = std::vector<std::function<void(Dynarec&)>>;
+
+    std::unordered_map<uint16_t, InstructionList> code_cache;
+
     // system registers
     std::array<uint8_t, 0x10> V;
     // counts down each cycle
@@ -46,6 +50,10 @@ private:
 
     // Increase PC by 2
     inline void step();
+
+    inline void timerStep();
+
+    bool isBranchInstruction(Opcode& opcode);
 
     // returns reference to register X
     inline uint8_t& Vx(Opcode& opcode);

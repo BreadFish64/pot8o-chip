@@ -45,7 +45,7 @@ private:
 
     std::unique_ptr<CPU> cpu;
 
-    unsigned long long cycle_count;
+    unsigned long long cycle_count = 0;
     std::string title;
     std::atomic_int target_clock_speed = 60;
     std::atomic<std::chrono::steady_clock::duration> cycle_length;

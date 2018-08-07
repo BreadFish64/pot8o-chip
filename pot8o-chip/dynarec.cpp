@@ -9,25 +9,80 @@ Dynarec::~Dynarec() = default;
 
 void Dynarec::execute() {
     while (true) {
-        Opcode opcode(system.memory[PC] << 8 | system.memory[PC | 1]);
-
-        opcode_table[opcode.op()](*this, opcode);
-
-        if (DT)
-            --DT;
-
-        if (ST) {
-            --ST;
-            if (!ST)
-                printf("BEEP\n");
+        const auto& cached_block = code_cache.find(PC);
+        if (cached_block != code_cache.end()) {
+            for (const auto& instruction : cached_block->second) {
+                instruction(*this);
+                timerStep();
+                system.cycle_count++;
+            }
+        } else {
+            InstructionList new_block;
+            Opcode current_instruction(0xFFFF);
+            for (uint16_t VPC = PC; !isBranchInstruction(current_instruction); VPC += 2) {
+                current_instruction = system.memory[VPC] << 8 | system.memory[VPC | 1];
+                switch (current_instruction.op()) {
+                case 0x0:
+                    new_block.push_back(std::bind(opcode_table_0.at(current_instruction.kk()),
+                                                  std::placeholders::_1, current_instruction));
+                    break;
+                case 0x8:
+                    new_block.push_back(std::bind(opcode_table_8.at(current_instruction.n()),
+                                                  std::placeholders::_1, current_instruction));
+                    break;
+                case 0xE:
+                    new_block.push_back(std::bind(opcode_table_E.at(current_instruction.kk()),
+                                                  std::placeholders::_1, current_instruction));
+                    break;
+                case 0xF:
+                    new_block.push_back(std::bind(opcode_table_F.at(current_instruction.kk()),
+                                                  std::placeholders::_1, current_instruction));
+                    break;
+                default:
+                    new_block.push_back(std::bind(opcode_table.at(current_instruction.op()),
+                                                  std::placeholders::_1, current_instruction));
+                }
+            }
+            code_cache.emplace(PC, new_block);
+            for (const auto& instruction : new_block) {
+                instruction(*this);
+                timerStep();
+                system.cycle_count++;
+            }
         }
-
-        system.cycle_count++;
     }
 }
 
 inline void Dynarec::step() {
     PC += 2;
+}
+
+inline void Dynarec::timerStep() {
+    if (DT)
+        --DT;
+
+    if (ST) {
+        --ST;
+        if (!ST)
+            printf("BEEP\n");
+    }
+}
+
+bool Dynarec::isBranchInstruction(Opcode& opcode) {
+    switch (opcode.op()) {
+    case 0x0:
+    case 0x1:
+    case 0x2:
+    case 0x3:
+    case 0x4:
+    case 0x5:
+    case 0x9:
+    case 0xB:
+    case 0xE:
+        return true;
+    default:
+        return false;
+    }
 }
 
 inline uint8_t& Dynarec::Vx(Opcode& opcode) {
