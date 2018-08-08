@@ -81,4 +81,6 @@ struct Opcode {
     uint8_t kk();
     // returns last 3 nibbles of opcode
     uint16_t nnn();
+
+    int getInstruction();
 };

@@ -2,6 +2,7 @@
 #include <execution>
 
 #include "dynarec.h"
+#include "enums.h"
 
 Dynarec::Dynarec(Chip8* parent) : system(*parent), PC(0x200) {}
 
@@ -21,29 +22,13 @@ void Dynarec::execute() {
             Opcode current_instruction(0xFFFF);
             for (uint16_t VPC = PC; !isBranchInstruction(current_instruction); VPC += 2) {
                 current_instruction = system.memory[VPC] << 8 | system.memory[VPC | 1];
-                switch (current_instruction.op()) {
-                case 0x0:
-                    new_block.push_back(std::bind(opcode_table_0.at(current_instruction.kk()),
-                                                  std::placeholders::_1, current_instruction));
-                    break;
-                case 0x8:
-                    new_block.push_back(std::bind(opcode_table_8.at(current_instruction.n()),
-                                                  std::placeholders::_1, current_instruction));
-                    break;
-                case 0xE:
-                    new_block.push_back(std::bind(opcode_table_E.at(current_instruction.kk()),
-                                                  std::placeholders::_1, current_instruction));
-                    break;
-                case 0xF:
-                    new_block.push_back(std::bind(opcode_table_F.at(current_instruction.kk()),
-                                                  std::placeholders::_1, current_instruction));
-                    break;
-                default:
-                    new_block.push_back(std::bind(opcode_table.at(current_instruction.op()),
-                                                  std::placeholders::_1, current_instruction));
-                }
             }
             code_cache.emplace(PC, new_block);
+            for (const auto& instruction : new_block) {
+                instruction(*this);
+                timerStep();
+                system.cycle_count++;
+            }
         }
     }
 }

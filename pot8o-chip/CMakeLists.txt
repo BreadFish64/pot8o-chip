@@ -5,8 +5,9 @@ add_executable(pot8o-chip
 	chip8.cpp
 	interpreter.h
 	interpreter.cpp
-	dynarec.h
-	dynarec.cpp
+	dynarec/dynarec.h
+	dynarec/dynarec.cpp
+	dynarec/enums.h
 	frontend.h
 	frontend.cpp
 )

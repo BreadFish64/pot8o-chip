@@ -6,7 +6,7 @@
 #include <vector>
 #include <windows.h>
 
-#include "chip8.h"
+#include "../chip8.h"
 
 using CachedChunk = unsigned char (*)();
 
