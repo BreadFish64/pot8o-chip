@@ -114,6 +114,9 @@ public:
     inline void operator=(const T& val) {
         __atomic_store_n(&this->val, val, __ATOMIC_RELAXED);
     }
+    inline T operator++(int){
+        return __atomic_fetch_add(&val, 1, __ATOMIC_RELAXED);
+    }
 };
 
 class Interface {
@@ -130,9 +133,11 @@ public:
     Atomic<u8> delay_timer;
     Atomic<u8> sound_timer;
 
+	Atomic<u64> frame_count;
     void PushFrame(Frame& frame) {
+        frame_count++;
         // TODO: figure out how to do this efficiently without missing frames at the end of the program
-        if (true) {
+        if (send_frame) {
             __builtin_memcpy(&frame_buffer, &frame, sizeof(frame));
             send_frame = false;
         }
@@ -254,7 +259,7 @@ void RND_Vx_byte() {
 
 template <unsigned x, unsigned y, unsigned height>
 void DRW_Vx_Vy_nibble() {
-    const auto left = V[x] + 8;
+    const auto left = V[x] + 7;
     const auto top = V[y];
     u64 flag = 0;
 
@@ -269,11 +274,11 @@ void DRW_Vx_Vy_nibble() {
     interface.PushFrame(frame_buffer);
 }
 
-#define SKP_Vx                                                                                     \
+#define SKP_Vx(pc, x)                                                                              \
     if (interface.keypad_state[V[x]])                                                              \
         goto* jump_table[pc + 4];
 
-#define SKNP_Vx                                                                                    \
+#define SKNP_Vx(pc, x)                                                                             \
     if (!interface.keypad_state[V[x]])                                                             \
         goto* jump_table[pc + 4];
 

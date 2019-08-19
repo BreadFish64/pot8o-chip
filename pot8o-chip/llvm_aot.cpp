@@ -149,7 +149,7 @@ static constexpr unsigned char seed = )" BYTE ";\n",
             std::uint8_t(std::chrono::system_clock::now().time_since_epoch().count()));
 
         // pass in game data
-        source_builder << "constexpr unsigned char game[]{";
+        source_builder << "static constexpr unsigned char game[]{";
         for (auto byte : game)
             source_builder << fmt::format(BYTE ",", byte);
         source_builder << "};";
@@ -182,7 +182,7 @@ int main(){
             (this->*opcode_table[op()])();
             source_builder << "\n";
         }
-        source_builder << ";}";
+        source_builder << "    return 0;\n}";
 
         std::ofstream source_file("source.cpp", std::ios::out);
         source_file << source_builder.str();

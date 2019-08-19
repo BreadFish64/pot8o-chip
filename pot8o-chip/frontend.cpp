@@ -42,12 +42,15 @@ void SDLFrontend::LoadGame(std::string& path) {
 
     std::chrono::high_resolution_clock::time_point frame_start;
     SDL_Event event;
-
+    std::string title;
     for (;;) {
         frame_start = std::chrono::high_resolution_clock::now();
 
         chip8.interface.DecrementTimers();
         chip8.interface.ConsumeFrameBuffer([this](auto frame) { ExplodeFrame(frame); });
+        title = "pot8o chip " + std::to_string(chip8.interface.frame_count * 60) + " fps";
+        chip8.interface.frame_count = 0;
+        SDL_SetWindowTitle(window.get(), title.data());
 
         SDL_UpdateTexture(texture.get(), nullptr, pixel_data.data(), 256);
         SDL_RenderCopy(renderer.get(), texture.get(), nullptr, nullptr);

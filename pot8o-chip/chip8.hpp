@@ -55,7 +55,7 @@ public:
     public:
         std::atomic_uint8_t delay_timer;
         std::atomic_uint8_t sound_timer;
-
+        std::atomic_uint64_t frame_count;
     } interface;
 
 private:
