@@ -1,109 +1,94 @@
+#include <chrono>
+#include <fstream>
 #include <iostream>
-#include <mutex>
 #include <thread>
+#include <type_traits>
 #include <SDL.h>
-#include "chip8.h"
 
-Frontend::Frontend(Chip8* chip8)
-    : chip8(*chip8), keyboard_state(std::unique_ptr<const uint8_t>(SDL_GetKeyboardState(nullptr))),
-      window(std::unique_ptr<SDL_Window, SDL_Deleter>(
-          SDL_CreateWindow("pot8o chip", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 64 * 8,
-                           32 * 8, SDL_WINDOW_RESIZABLE),
-          SDL_Deleter())),
-      renderer(std::unique_ptr<SDL_Renderer, SDL_Deleter>(
-          SDL_CreateRenderer(window.get(), -1, SDL_RENDERER_ACCELERATED), SDL_Deleter())),
-      texture(std::unique_ptr<SDL_Texture, SDL_Deleter>(
+#include "chip8.hpp"
+#include "frontend.hpp"
+#include "interpreter.hpp"
+#include "llvm_aot.hpp"
+
+constexpr auto WIDTH = 64, HEIGHT = 32;
+
+SDLFrontend::SDLFrontend()
+    : window{std::unique_ptr<SDL_Window, SDL_Deleter>(
+          SDL_CreateWindow("pot8o chip", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+                           WIDTH * 8, HEIGHT * 8, SDL_WINDOW_RESIZABLE),
+          SDL_Deleter())},
+      renderer{std::unique_ptr<SDL_Renderer, SDL_Deleter>(
+          SDL_CreateRenderer(window.get(), -1, SDL_RENDERER_ACCELERATED), SDL_Deleter())},
+      texture{std::unique_ptr<SDL_Texture, SDL_Deleter>(
           SDL_CreateTexture(renderer.get(), SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING,
-                            64, 32),
-          SDL_Deleter())) {
+                            WIDTH, HEIGHT),
+          SDL_Deleter())},
+      chip8{Chip8(std::make_unique<LLVMAOT>())} {}
 
-    SDL_RenderSetScale(renderer.get(), 8.0f, 8.0f);
-}
+SDLFrontend::~SDLFrontend() = default;
 
-Frontend::~Frontend() = default;
+void SDLFrontend::LoadGame(std::string& path) {
+    using namespace std::literals::chrono_literals;
 
-void Frontend::mainLoop() {
-    SDL_Event* event = nullptr;
-    frame_start = std::chrono::steady_clock::now();
+    std::ifstream game(path, std::ios::binary);
+    if (!game) {
+        std::cout << "Bad game file: " << path;
+        return;
+    }
+    std::thread emu_thread(
+        [bin = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(game),
+                                         std::istreambuf_iterator<char>()),
+         this] { chip8.Run(bin); });
 
-    while (SDL_PollEvent(event)) {
-        if (event) {
-            if (event->type == SDL_WINDOWEVENT)
-                changeSize();
-        }
+    std::chrono::high_resolution_clock::time_point frame_start;
+    SDL_Event event;
 
-        for (unsigned char i = 0; i < keys.size(); ++i) {
-            keypad_state[i] = keyboard_state.get()[keys[i]];
-        }
+    for (;;) {
+        frame_start = std::chrono::high_resolution_clock::now();
 
-        if (keyboard_state.get()[SDL_SCANCODE_ESCAPE])
-            exit(0);
-        if (keyboard_state.get()[SDL_SCANCODE_RIGHT] | keyboard_state.get()[SDL_SCANCODE_UP])
-            chip8.changeSpeed(1);
-        if (keyboard_state.get()[SDL_SCANCODE_LEFT] | keyboard_state.get()[SDL_SCANCODE_DOWN])
-            chip8.changeSpeed(-1);
-        if (keyboard_state.get()[SDL_SCANCODE_L])
-            chip8.limitSpeed = true;
-        if (keyboard_state.get()[SDL_SCANCODE_U])
-            chip8.limitSpeed = false;
-        if (keyboard_state.get()[SDL_SCANCODE_C]) {
-            std::string game;
-            std::cin >> game;
-            chip8.loadGame(game);
-        }
-        if (keyboard_state.get()[SDL_SCANCODE_P])
-            chip8.paused = true;
-        if (keyboard_state.get()[SDL_SCANCODE_G])
-            chip8.paused = false;
+        chip8.interface.DecrementTimers();
+        chip8.interface.ConsumeFrameBuffer([this](auto frame) { ExplodeFrame(frame); });
 
-        chip8.getFrameBufferLock().lock();
-        SDL_UpdateTexture(texture.get(), NULL, chip8.getFrameBuffer(), 256);
-        SDL_RenderCopy(renderer.get(), texture.get(), NULL, NULL);
-        chip8.getFrameBufferLock().unlock();
+        SDL_UpdateTexture(texture.get(), nullptr, pixel_data.data(), 256);
+        SDL_RenderCopy(renderer.get(), texture.get(), nullptr, nullptr);
         SDL_RenderPresent(renderer.get());
 
-        std::this_thread::sleep_until(frame_start += frame_time);
-    }
-}
-
-uint8_t Frontend::waitForInput() {
-    while (true) {
-        for (char i = 0; i < keypad_state.size(); i++) {
-            if (keypad_state[i])
-                return i;
+        while (SDL_PollEvent(&event)) {
+        // handle events
         }
+
+        std::this_thread::sleep_until(frame_start + std::chrono::duration<double>(1. / 60.));
     }
-    return UINT8_MAX;
 }
 
-bool Frontend::keyIsPressed(uint8_t key) {
-    return keypad_state[key];
+void SDLFrontend::ExplodeFrame(const Chip8::Frame& frame) {
+    using PixelType = std::remove_reference_t<decltype(pixel_data[0])>;
+    constexpr auto stride = sizeof(frame[0]) * CHAR_BIT;
+    static_assert(sizeof(frame) * CHAR_BIT * sizeof(PixelType) == sizeof(pixel_data),
+                  "frame sizes do not match");
+
+    for (auto i = 0; i < frame.size(); i++) {
+        const auto row = frame[i];
+        for (auto j = 0; j < stride; j++)
+            pixel_data[i * stride + j] =
+                (row & (decltype(row)(1) << (64 - j))) ? ~PixelType(0) : PixelType(0);
+    }
 }
 
-void Frontend::setTitleBar(std::string title) {
-    SDL_SetWindowTitle(window.get(), title.c_str());
-}
-
-void Frontend::changeSize() {
-    std::unique_ptr<int> width, height;
-    SDL_GetWindowSize(window.get(), width.get(), height.get());
-    SDL_RenderSetScale(renderer.get(), *width.get() / 64.0f, *height.get() / 64.0f);
-}
-
-void Frontend::SDL_Deleter::operator()(SDL_Window* p) const {
+void SDLFrontend::SDL_Deleter::operator()(SDL_Window* p) const {
     SDL_DestroyWindow(p);
 }
 
-void Frontend::SDL_Deleter::operator()(SDL_Renderer* p) const {
+void SDLFrontend::SDL_Deleter::operator()(SDL_Renderer* p) const {
     SDL_DestroyRenderer(p);
 }
 
-void Frontend::SDL_Deleter::operator()(SDL_Texture* p) const {
+void SDLFrontend::SDL_Deleter::operator()(SDL_Texture* p) const {
     SDL_DestroyTexture(p);
 }
 
-const std::array<SDL_Scancode, 0x10> Frontend::keys{
+/*const std::array<SDL_Scancode, 0x10> SDLFrontend::keys{
     SDL_SCANCODE_KP_0,     SDL_SCANCODE_KP_1,    SDL_SCANCODE_KP_2,      SDL_SCANCODE_KP_3,
     SDL_SCANCODE_KP_4,     SDL_SCANCODE_KP_5,    SDL_SCANCODE_KP_6,      SDL_SCANCODE_KP_7,
     SDL_SCANCODE_KP_8,     SDL_SCANCODE_KP_9,    SDL_SCANCODE_KP_DIVIDE, SDL_SCANCODE_KP_MULTIPLY,
-    SDL_SCANCODE_KP_MINUS, SDL_SCANCODE_KP_PLUS, SDL_SCANCODE_KP_ENTER,  SDL_SCANCODE_KP_PERIOD};
+    SDL_SCANCODE_KP_MINUS, SDL_SCANCODE_KP_PLUS, SDL_SCANCODE_KP_ENTER,  SDL_SCANCODE_KP_PERIOD};*/
