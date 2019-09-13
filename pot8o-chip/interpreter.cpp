@@ -1,19 +1,19 @@
-#include "interpreter.hpp"
 #include "font.hpp"
+#include "interpreter.hpp"
 
 void Interpreter::Run(Chip8::Interface& interface, std::vector<std::uint8_t> game) {
     this->interface = &interface;
-	rng.seed(std::random_device()());
+    rng.seed(std::random_device()());
 
-	std::copy(FONT.begin(), FONT.end(), memory.begin());
-	std::copy(game.begin(), game.end(), memory.begin() + 0x200);
+    std::copy(FONT.begin(), FONT.end(), memory.begin());
+    std::copy(game.begin(), game.end(), memory.begin() + 0x200);
 
-	for (;;) {
+    for (;;) {
         if (program_counter >= 0x1000)
             return;
-            opcode = memory[program_counter] << 8 | memory[program_counter + 1];
-            (this->*opcode_table[op()])();
-	}
+        opcode = memory[program_counter] << 8 | memory[program_counter + 1];
+        (this->*opcode_table[op()])();
+    }
 }
 
 void Interpreter::split_0() {
@@ -23,8 +23,8 @@ void Interpreter::split_0() {
 void Interpreter::CLS() {
     std::fill(frame_buffer.begin(), frame_buffer.end(), 0);
 
-	if (interface->GetSendFrame())
-    interface->PushFrameBuffer(frame_buffer);
+    if (interface->GetSendFrame())
+        interface->PushFrameBuffer(frame_buffer);
     step();
 }
 
@@ -151,7 +151,7 @@ void Interpreter::DRW_Vx_Vy_nibble() {
     }
     V[0xF] = static_cast<bool>(VF);
 
-	if (interface->GetSendFrame())
+    if (interface->GetSendFrame())
         interface->PushFrameBuffer(frame_buffer);
 
     step();
@@ -183,7 +183,7 @@ void Interpreter::LD_Vx_K() {
         for (auto i = 0;; i = (i + 1) % interface->keypad_state.size())
             if (interface->keypad_state[i])
                 return i;
-	}();
+    }();
     step();
 }
 
@@ -218,13 +218,11 @@ void Interpreter::LD_B_Vx() {
 }
 
 void Interpreter::LD_I_Vx() {
-    std::copy_n(V.begin(), X() + 1,
-                memory.begin() + I);
+    std::copy_n(V.begin(), X() + 1, memory.begin() + I);
     step();
 }
 
 void Interpreter::LD_Vx_I() {
-    std::copy_n(memory.begin() + I, X() + 1,
-                V.begin());
+    std::copy_n(memory.begin() + I, X() + 1, V.begin());
     step();
 }

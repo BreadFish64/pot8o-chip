@@ -1,14 +1,14 @@
 #pragma once
 #include <array>
-#include <chrono>
 #include <atomic>
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <vector>
 
 class Chip8 {
 public:
-	using Frame = std::array<std::uint64_t, 32>;
+    using Frame = std::array<std::uint64_t, 32>;
     class Interface;
 
     class CPU {
@@ -31,18 +31,19 @@ public:
         void ConsumeFrameBuffer(std::function<void(const Frame&)> callback) {
             if (send_frame)
                 return;
-			callback(frame_buffer);
+            callback(frame_buffer);
             send_frame = true;
         }
 
-		void PushFrameBuffer(Frame& frame) {
+        void PushFrameBuffer(Frame& frame) {
             std::copy(frame.begin(), frame.end(), frame_buffer.begin());
             send_frame = false;
-		}
+        }
 
-		inline bool GetSendFrame() {
+        inline bool GetSendFrame() {
             return send_frame;
         }
+
     private:
         Frame frame_buffer{};
 
@@ -55,21 +56,20 @@ public:
     public:
         std::atomic_uint8_t delay_timer;
         std::atomic_uint8_t sound_timer;
-        std::atomic_uint64_t frame_count;
+        std::atomic_uint64_t cycle_count;
     } interface;
 
 private:
-	std::unique_ptr<CPU> cpu;
+    std::unique_ptr<CPU> cpu;
     bool running = false;
 
 public:
     Chip8(std::unique_ptr<CPU> cpu) : cpu{std::move(cpu)} {}
 
-	void Run(std::vector<std::uint8_t> game) {
+    void Run(std::vector<std::uint8_t> game) {
         if (!running) {
             running = true;
             cpu->Run(interface, game);
-
         }
     }
 };

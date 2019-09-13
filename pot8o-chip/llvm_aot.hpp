@@ -1,9 +1,7 @@
-#include <algorithm>
 #include <array>
 #include <cstdint>
-#include <random>
-#include <vector>
 #include <sstream>
+#include <vector>
 
 #include "chip8.hpp"
 
@@ -12,8 +10,7 @@ public:
     void Run(Chip8::Interface& interface, std::vector<std::uint8_t> game) override;
 
 private:
-
-	void NOOP();
+    void NOOP();
     // Call sub-table for opcodes starting with 0x0
     void split_0();
     // Clear the display
@@ -125,7 +122,7 @@ private:
     // location in memory corresponding to the current instruction
     std::size_t program_counter = 0x200;
 
-	std::stringstream source_builder;
+    std::stringstream source_builder;
 
     using Instruction = decltype(&LLVMAOT::NOOP);
 
@@ -137,7 +134,7 @@ private:
 		&LLVMAOT::RND_Vx_byte,	&LLVMAOT::DRW_Vx_Vy_nibble,	&LLVMAOT::split_E,		&LLVMAOT::split_F
 	};
 
-	static constexpr std::array<Instruction, 0x100> opcode_table_0 = []{
+	static constexpr std::array<Instruction, 0x100> opcode_table_0 = []() constexpr {
 		std::array<Instruction, 0x100> table{};
 		for (auto& op : table) op = &LLVMAOT::NOOP;
 		table[0xE0] = &LLVMAOT::CLS;
@@ -152,7 +149,7 @@ private:
 		&LLVMAOT::NOOP,			&LLVMAOT::NOOP,			&LLVMAOT::SHL_Vx,		&LLVMAOT::NOOP
 	};
 
-	static constexpr std::array<Instruction, 0x100> opcode_table_E = []{
+	static constexpr std::array<Instruction, 0x100> opcode_table_E = []() constexpr {
 		std::array<Instruction, 0x100> table{};
 		for (auto& op : table) op = &LLVMAOT::NOOP;
 		table[0x9E] = &LLVMAOT::SKP_Vx;
@@ -160,7 +157,7 @@ private:
 		return table;
 	}();
 
-	static constexpr std::array<Instruction, 0x100> opcode_table_F = []{
+	static constexpr std::array<Instruction, 0x100> opcode_table_F = []() constexpr {
 		std::array<Instruction, 0x100> table{};
 		for (auto& op : table) op = &LLVMAOT::NOOP;
 		table[0x07] = &LLVMAOT::LD_Vx_DT;

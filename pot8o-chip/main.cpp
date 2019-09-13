@@ -14,8 +14,11 @@ int main(int argc, char* argv[]) {
         path = argv[1];
     }
 
-	SDL_Init(SDL_INIT_EVERYTHING);
+    SDL_Init(SDL_INIT_EVERYTHING);
     SDLFrontend frontend;
-    frontend.LoadGame(path);
+    while (true) {
+        frontend.LoadGame(path);
+        std::cin >> path;
+    }
     return 0;
 }

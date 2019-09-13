@@ -111,11 +111,14 @@ public:
     inline operator T() const {
         return __atomic_load_n(&val, __ATOMIC_RELAXED);
     }
-    inline void operator=(const T& val) {
-        __atomic_store_n(&this->val, val, __ATOMIC_RELAXED);
+    inline void operator=(const T& rhs) {
+        __atomic_store_n(&this->val, rhs, __ATOMIC_RELAXED);
     }
-    inline T operator++(int){
+    inline T operator++(int) {
         return __atomic_fetch_add(&val, 1, __ATOMIC_RELAXED);
+    }
+    inline T operator+=(const T& rhs) {
+        return __atomic_fetch_add(&val, rhs, __ATOMIC_RELAXED);
     }
 };
 
@@ -133,10 +136,11 @@ public:
     Atomic<u8> delay_timer;
     Atomic<u8> sound_timer;
 
-	Atomic<u64> frame_count;
+    // actually twice the cycle count but the frontend can figure out that calculation
+    Atomic<u64> cycle_count;
     void PushFrame(Frame& frame) {
-        frame_count++;
-        // TODO: figure out how to do this efficiently without missing frames at the end of the program
+        // TODO: figure out how to do this efficiently without missing frames at the end of the
+        // program
         if (send_frame) {
             __builtin_memcpy(&frame_buffer, &frame, sizeof(frame));
             send_frame = false;
@@ -150,7 +154,8 @@ static u8 V[16]{};
 static void* stack[16]{};
 static unsigned stack_ptr{};
 static unsigned I{};
-static u8 holdrand = seed;
+static unsigned rand = seed;
+static unsigned last_jump;
 
 namespace Opcodes {
 void CLS() {
@@ -159,11 +164,18 @@ void CLS() {
     interface.PushFrame(frame_buffer);
 }
 
-#define RET goto* stack[--stack_ptr];
+#define RET(pc)                                                                                    \
+    interface.cycle_count += pc - last_jump;                                                       \
+    goto* stack[--stack_ptr];
 
-#define JP_addr(addr) goto* jump_table[addr];
+#define JP_addr(pc, addr)                                                                          \
+    interface.cycle_count += pc - last_jump;                                                       \
+    last_jump = addr;                                                                              \
+    goto* jump_table[addr];
 
 #define CALL_addr(pc, addr)                                                                        \
+    interface.cycle_count += pc - last_jump;                                                       \
+    last_jump = addr;                                                                              \
     stack[stack_ptr++] = jump_table[pc + 2];                                                       \
     goto* jump_table[addr];
 
@@ -249,12 +261,17 @@ void LD_I_addr() {
     I = addr;
 }
 
-#define JP_V0_addr(addr) goto* jump_table[addr + V[0x0]];
+#define JP_V0_addr(pc, addr)                                                                       \
+    interface.cycle_count += pc - last_jump;                                                       \
+    last_jump = addr + V[0x0];                                                                     \
+    goto* jump_table[addr + V[0x0]];
 
 template <unsigned x, u8 byte>
 void RND_Vx_byte() {
-    holdrand = holdrand * 0xFD + 0xC3;
-    V[x] = holdrand & byte;
+    rand ^= rand << 13;
+    rand ^= rand >> 17;
+    rand ^= rand << 5;
+    V[x] = rand & byte;
 }
 
 template <unsigned x, unsigned y, unsigned height>
@@ -290,7 +307,7 @@ void LD_Vx_DT() {
 template <unsigned x>
 void LD_Vx_K() {
     V[x] = [] {
-        for (auto i = 0;; i = (i + 1) % sizeof(interface.keypad_state) / sizeof(Atomic<bool>))
+        for (auto i = 0;; i = (i + 1) % (sizeof(interface.keypad_state) / sizeof(Atomic<bool>)))
             if (interface.keypad_state[i])
                 return i;
     }();
@@ -338,5 +355,4 @@ void LD_Vx_I() {
         V[i] = memory[I + i];
 }
 } // namespace Opcodes
-
 )";

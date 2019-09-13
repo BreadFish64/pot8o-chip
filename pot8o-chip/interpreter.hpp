@@ -1,5 +1,4 @@
 #include <array>
-#include <algorithm>
 #include <cstdint>
 #include <random>
 #include <vector>
@@ -93,11 +92,11 @@ private:
     // Read registers V[0] through V[x] from memory starting at location I
     void LD_Vx_I();
 
-	inline void step() {
+    inline void step() {
         program_counter += 2;
     }
 
-	inline std::uint8_t op() {
+    inline std::uint8_t op() {
         return (opcode & 0xF000) >> 12;
     }
 
@@ -129,8 +128,8 @@ private:
         return opcode & 0x0FFF;
     }
 
-	friend class Chip8::Interface;
-	Chip8::Interface* interface;
+    friend class Chip8::Interface;
+    Chip8::Interface* interface;
 
     // used for random number generation in intruction 0xC
     std::mt19937 rng;
@@ -150,7 +149,7 @@ private:
     // location in memory corresponding to the current instruction
     std::size_t program_counter = 0x200;
 
-	using Instruction = decltype(&Interpreter::step);
+    using Instruction = decltype(&Interpreter::step);
 
     // clang-format off
 	static constexpr std::array<Instruction, 0x10>	opcode_table{
@@ -195,5 +194,5 @@ private:
 		table[0x65] = &Interpreter::LD_Vx_I;
 		return table;
 	}();
-	// clang-format on
+    // clang-format on
 };

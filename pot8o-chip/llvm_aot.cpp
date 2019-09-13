@@ -80,8 +80,7 @@ std::function<void()> Compile() {
     auto diagnosticOptions = new clang::DiagnosticOptions();
     llvm::IntrusiveRefCntPtr<clang::DiagnosticIDs> ids;
     // presumably llvm will clean this up later...
-    auto textDiagnosticPrinter =
-        new clang::TextDiagnosticPrinter(llvm::outs(), diagnosticOptions);
+    auto textDiagnosticPrinter = new clang::TextDiagnosticPrinter(llvm::outs(), diagnosticOptions);
     llvm::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diagnosticsEngine(
         new clang::DiagnosticsEngine(ids, diagnosticOptions, textDiagnosticPrinter));
 
@@ -102,6 +101,7 @@ std::function<void()> Compile() {
     auto& codeGenOptions = compilerInvocation.getCodeGenOpts();
     codeGenOptions.CodeModel = "large";
     codeGenOptions.ThreadModel = "posix";
+    codeGenOptions.OptimizationLevel = 3;
 
     llvm::LLVMContext context;
     clang::EmitAssemblyAction action(&context);
@@ -144,9 +144,9 @@ void LLVMAOT::Run(Chip8::Interface& interface, std::vector<std::uint8_t> game) {
         source_builder << fmt::format(
             R"(class Interface;
 Interface& interface = *reinterpret_cast<Interface*>({:p});
-static constexpr unsigned char seed = )" BYTE ";\n",
+static constexpr unsigned int seed = )" BYTE ";\n",
             reinterpret_cast<void*>(&interface),
-            std::uint8_t(std::chrono::system_clock::now().time_since_epoch().count()));
+            std::uint32_t(std::chrono::system_clock::now().time_since_epoch().count()));
 
         // pass in game data
         source_builder << "static constexpr unsigned char game[]{";
@@ -212,11 +212,11 @@ void LLVMAOT::CLS() {
 }
 
 void LLVMAOT::RET() {
-    source_builder << "RET;";
+    source_builder << fmt::format("RET(" ADDR ");", program_counter);
 }
 
 void LLVMAOT::JP_addr() {
-    source_builder << fmt::format("JP_addr(" ADDR ");", nnn());
+    source_builder << fmt::format("JP_addr(" ADDR c ADDR ");", program_counter, nnn());
 }
 
 void LLVMAOT::CALL_addr() {
@@ -293,7 +293,7 @@ void LLVMAOT::LD_I_addr() {
 }
 
 void LLVMAOT::JP_V0_addr() {
-    source_builder << fmt::format("JP_V0_addr(" ADDR ");", nnn());
+    source_builder << fmt::format("JP_V0_addr(" ADDR c ADDR ");", program_counter, nnn());
 }
 
 void LLVMAOT::RND_Vx_byte() {
