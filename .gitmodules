@@ -1,4 +1,0 @@
-[submodule "SDL"]
-	path = SDL
-	url = https://github.com/SDL-mirror/SDL
-	ignore = dirty
