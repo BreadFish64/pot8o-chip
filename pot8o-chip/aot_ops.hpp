@@ -123,21 +123,18 @@ public:
 };
 
 class Interface {
-private:
     Frame frame_buffer;
-
 public:
     Atomic<bool> keypad_state[16];
-
-private:
-    Atomic<bool> send_frame;
-
-public:
-    Atomic<u8> delay_timer;
-    Atomic<u8> sound_timer;
-
     // actually twice the cycle count but the frontend can figure out that calculation
     Atomic<u64> cycle_count;
+    Atomic<u8> delay_timer;
+    Atomic<u8> sound_timer;
+private:
+    Atomic<bool> send_frame;
+    Atomic<bool> stop_flag;
+
+public:
     void PushFrame(Frame& frame) {
         // TODO: figure out how to do this efficiently without missing frames at the end of the
         // program
@@ -145,6 +142,7 @@ public:
             __builtin_memcpy(&frame_buffer, &frame, sizeof(frame));
             send_frame = false;
         }
+        if (stop_flag);
     }
 };
 

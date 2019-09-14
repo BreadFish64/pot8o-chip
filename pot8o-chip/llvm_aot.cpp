@@ -1,9 +1,9 @@
 #include <chrono>
 #include <fstream>
 #include <functional>
-#include <iostream>
 
-#include <fmt\format.h>
+#include <fmt/format.h>
+#include <fmt/printf.h>
 
 #include <clang/AST/ASTConsumer.h>
 #include <clang/AST/ASTContext.h>
@@ -93,6 +93,7 @@ std::function<void()> Compile() {
     compilerInvocation.setLangDefaults(
         *compilerInvocation.getLangOpts(), clang::InputKind::CXX, llvm::Triple(triple),
         compilerInvocation.getPreprocessorOpts(), clang::LangStandard::Kind::lang_gnucxx17);
+    compilerInvocation.getLangOpts()->CXXExceptions = true;
 
     compilerInvocation.getFrontendOpts().Inputs = {
         clang::FrontendInputFile("source.cpp", clang::InputKind::CXX)};
@@ -107,7 +108,7 @@ std::function<void()> Compile() {
     clang::EmitAssemblyAction action(&context);
 
     if (!compilerInstance.ExecuteAction(action)) {
-        std::cout << "compilation failed";
+        fmt::print("compilation failed\n");
         return nullptr;
     }
 
@@ -165,7 +166,7 @@ int main(){
 	    memory[i] = FONT[i];
     for (auto i = 0; i < sizeof(game); i++)
 	    memory[0x200 + i] = game[i];
-
+    try {
 )";
         // create the jump table
         source_builder << "static constexpr void* jump_table[]{";
@@ -182,7 +183,15 @@ int main(){
             (this->*opcode_table[op()])();
             source_builder << "\n";
         }
-        source_builder << "    return 0;\n}";
+        source_builder << R"(
+    end_loop:
+    for (;;)
+        interface.PushFrame(frame_buffer);
+    return 1;
+    } catch (...) {
+    return 0;
+    }
+})";
 
         std::ofstream source_file("source.cpp", std::ios::out);
         source_file << source_builder.str();
@@ -192,7 +201,7 @@ int main(){
     if (main)
         main();
     else
-        std::cout << "function not found";
+        fmt::print("function not found\n");
 }
 
 // TODO: rewrite with function-like macros
@@ -216,7 +225,11 @@ void LLVMAOT::RET() {
 }
 
 void LLVMAOT::JP_addr() {
-    source_builder << fmt::format("JP_addr(" ADDR c ADDR ");", program_counter, nnn());
+    if (program_counter == nnn())
+		// programs often jump to pc when done executing, this ensures that the program still updates the framebuffer
+        source_builder << "goto end_loop;";
+    else
+        source_builder << fmt::format("JP_addr(" ADDR c ADDR ");", program_counter, nnn());
 }
 
 void LLVMAOT::CALL_addr() {

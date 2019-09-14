@@ -34,7 +34,9 @@ private:
         {SDLK_KP_DIVIDE, 0xC}, {SDLK_KP_MULTIPLY, 0xD}, {SDLK_KP_MINUS, 0xE}, {SDLK_KP_PLUS, 0xF},
     };
 
-    const std::unique_ptr<SDL_Window, SDL_Deleter> window;
+    std::unique_ptr<SDL_Window, SDL_Deleter> window;
+    std::unique_ptr<SDL_Renderer, SDL_Deleter> renderer;
+    std::unique_ptr<SDL_Texture, SDL_Deleter> texture;
 
     std::array<std::uint32_t, 64 * 32> pixel_data{};
 

@@ -1,11 +1,12 @@
 #include <chrono>
 #include <fstream>
-#include <iostream>
 #include <thread>
 #include <type_traits>
+#include <fmt/format.h>
+#include <fmt/printf.h>
 
-#include <glad/glad.h>
 #include <SDL.h>
+#include <glad/glad.h>
 
 #include "chip8.hpp"
 #include "frontend.hpp"
@@ -14,40 +15,48 @@
 
 constexpr auto WIDTH = 64, HEIGHT = 32;
 
-SDLFrontend::SDLFrontend()
-    : window{std::unique_ptr<SDL_Window, SDL_Deleter>(
-          SDL_CreateWindow("pot8o chip", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                           WIDTH, HEIGHT, SDL_WINDOW_RESIZABLE),
-          SDL_Deleter())},
-      chip8(std::make_unique<LLVMAOT>()) {}
+SDLFrontend::SDLFrontend() : chip8(std::make_unique<LLVMAOT>()) {
+    window = std::unique_ptr<SDL_Window, SDL_Deleter>(
+        SDL_CreateWindow("pot8o chip", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIDTH * 8,
+                         HEIGHT * 8, SDL_WINDOW_RESIZABLE),
+        SDL_Deleter());
+    renderer = std::unique_ptr<SDL_Renderer, SDL_Deleter>(
+        SDL_CreateRenderer(window.get(), -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC), SDL_Deleter());
+    texture = std::unique_ptr<SDL_Texture, SDL_Deleter>(
+        SDL_CreateTexture(renderer.get(), SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING,
+                          WIDTH, HEIGHT),
+        SDL_Deleter());
+}
 
 SDLFrontend::~SDLFrontend() = default;
 
 void SDLFrontend::LoadGame(std::string& path) {
     using namespace std::literals::chrono_literals;
-
-    std::ifstream game(path, std::ios::binary);
-    if (!game) {
-        std::cout << "Bad game file: " << path;
-        return;
+    {
+        std::ifstream game(path, std::ios::binary);
+        if (!game) {
+            fmt::printf("bad game path: {}", path);
+            return;
+        }
+        chip8.Run(std::vector<std::uint8_t>(std::istreambuf_iterator<char>(game),
+                                            std::istreambuf_iterator<char>()));
     }
-    std::thread emu_thread([bin = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(game),
-                                                            std::istreambuf_iterator<char>()),
-                            this] { chip8.Run(bin); });
 
-    std::chrono::high_resolution_clock::time_point frame_start;
+    SDL_GL_SetSwapInterval(1);
+
+    SDL_DisplayMode display_mode;
+    SDL_GetWindowDisplayMode(window.get(), &display_mode);
     SDL_Event event;
     std::string title;
+    std::uint64_t frame_count = 0;
     for (;;) {
-        frame_start = std::chrono::high_resolution_clock::now();
+        chip8.ConsumeFrameBuffer([this](auto frame) { ExplodeFrame(frame); });
+        SDL_UpdateTexture(texture.get(), nullptr, pixel_data.data(), 256);
+        SDL_RenderCopy(renderer.get(), texture.get(), nullptr, nullptr);
+        SDL_RenderPresent(renderer.get());
 
-        chip8.interface.DecrementTimers();
-        chip8.interface.ConsumeFrameBuffer([this](auto frame) { ExplodeFrame(frame); });
-        title = "pot8o chip " + std::to_string(chip8.interface.cycle_count / 2 * 60) + " Hz";
-        chip8.interface.cycle_count = 0;
+        title = fmt::format("pot8o chip - {:0=.2} GHz", chip8.GetCycles() * display_mode.refresh_rate / 1'000'000'000.);
         SDL_SetWindowTitle(window.get(), title.data());
-
-
 
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
@@ -55,14 +64,13 @@ void SDLFrontend::LoadGame(std::string& path) {
             case SDL_KEYUP: {
                 auto key = key_map.find(event.key.keysym.sym);
                 if (key != key_map.end())
-                    chip8.interface.keypad_state[key->second] = event.key.state;
+                    chip8.SetKey(key->second, event.key.state);
             } break;
             case SDL_QUIT:
+                chip8.Stop();
                 return;
             }
         }
-
-        std::this_thread::sleep_until(frame_start + std::chrono::duration<double>(1. / 60.));
     }
 }
 
@@ -76,7 +84,7 @@ void SDLFrontend::ExplodeFrame(const Chip8::Frame& frame) {
         const auto row = frame[i];
         for (auto j = 0; j < stride; j++)
             pixel_data[i * stride + j] =
-                (row & (decltype(row)(1) << (64 - j))) ? ~PixelType(0) : PixelType(0);
+                (row & (decltype(row)(1) << (63 - j))) ? ~PixelType(0) : PixelType(0);
     }
 }
 

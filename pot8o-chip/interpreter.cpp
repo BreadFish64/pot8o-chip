@@ -23,7 +23,7 @@ void Interpreter::split_0() {
 void Interpreter::CLS() {
     std::fill(frame_buffer.begin(), frame_buffer.end(), 0);
 
-    if (interface->GetSendFrame())
+    if (interface->send_frame)
         interface->PushFrameBuffer(frame_buffer);
     step();
 }
@@ -151,7 +151,7 @@ void Interpreter::DRW_Vx_Vy_nibble() {
     }
     V[0xF] = static_cast<bool>(VF);
 
-    if (interface->GetSendFrame())
+    if (interface->send_frame)
         interface->PushFrameBuffer(frame_buffer);
 
     step();
