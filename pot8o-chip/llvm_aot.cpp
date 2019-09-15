@@ -3,7 +3,6 @@
 #include <functional>
 
 #include <fmt/format.h>
-#include <fmt/printf.h>
 
 #include <clang/AST/ASTConsumer.h>
 #include <clang/AST/ASTContext.h>

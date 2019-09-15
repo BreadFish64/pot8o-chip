@@ -9,6 +9,7 @@ add_executable(pot8o-chip
 	interpreter.hpp
 	interpreter.cpp
 	font.hpp
+	open_gl.hpp
 )
 
 find_package(SDL2 CONFIG REQUIRED)

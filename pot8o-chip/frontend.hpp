@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "chip8.hpp"
+#include "open_gl.hpp"
 
 struct SDL_Renderer;
 struct SDL_Texture;
@@ -16,6 +17,7 @@ public:
         void operator()(SDL_Window* p) const;
         void operator()(SDL_Renderer* p) const;
         void operator()(SDL_Texture* p) const;
+        void operator()(SDL_GLContext* p) const;
     };
 
     explicit SDLFrontend();
@@ -24,6 +26,15 @@ public:
     void LoadGame(std::string& path);
 
 private:
+	struct GLContext {
+        SDL_GLContext ctx;
+		explicit GLContext(SDL_Window* window) {
+            ctx = SDL_GL_CreateContext(window);
+		}
+		~GLContext() {
+            SDL_GL_DeleteContext(ctx);
+		}
+	};
     void ExplodeFrame(const Chip8::Frame& frame);
 
     // todo: add configuration somehow
@@ -35,8 +46,13 @@ private:
     };
 
     std::unique_ptr<SDL_Window, SDL_Deleter> window;
-    std::unique_ptr<SDL_Renderer, SDL_Deleter> renderer;
-    std::unique_ptr<SDL_Texture, SDL_Deleter> texture;
+    std::unique_ptr<GLContext> context;
+    OpenGL::Texture frame_buffer;
+    OpenGL::Program present_program;
+    OpenGL::Buffer vertex_buffer;
+    OpenGL::VAO vao;
+    //std::unique_ptr<SDL_Renderer, SDL_Deleter> renderer;
+    //std::unique_ptr<SDL_Texture, SDL_Deleter> texture;
 
     std::array<std::uint32_t, 64 * 32> pixel_data{};
 

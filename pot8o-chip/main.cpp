@@ -14,7 +14,6 @@ int main(int argc, char* argv[]) {
         path = argv[1];
     }
 
-    SDL_Init(SDL_INIT_EVERYTHING);
     SDLFrontend frontend;
     while (true) {
         frontend.LoadGame(path);
