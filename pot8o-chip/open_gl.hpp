@@ -1,9 +1,9 @@
 #pragma once
 
 #include <cassert>
-#include <glad/glad.h>
 #include <fmt/format.h>
 #include <fmt/printf.h>
+#include <glad/glad.h>
 
 namespace OpenGL {
 
@@ -29,53 +29,26 @@ void main() {
     frag_color = vec4(pixel);
 })";
 
-struct Texture {
-    GLuint handle = NULL;
-	void Create() {
-        assert(!handle);
-        glGenTextures(1, &handle);
-	}
-
-	~Texture() {
-        glDeleteTextures(1, &handle);
-	}
-
-	operator GLuint() {
-        return handle;
-	}
-};
-
-struct Buffer {
-    GLuint handle = NULL;
-    void Create() {
-        assert(!handle);
-        glGenBuffers(1, &handle);
+#define GL_RESOURCE_WRAPPER(_resource)                                                             \
+    struct _resource {                                                                             \
+        GLuint handle = NULL;                                                                      \
+        void Create() {                                                                            \
+            assert(!handle);                                                                       \
+            glGen##_resource##s(1, &handle);                                                       \
+        }                                                                                          \
+                                                                                                   \
+        ~_resource() {                                                                             \
+            glDelete##_resource##s(1, &handle);                                                    \
+        }                                                                                          \
+                                                                                                   \
+        operator GLuint() {                                                                        \
+            return handle;                                                                         \
+        }                                                                                          \
     }
 
-    ~Buffer() {
-        glDeleteBuffers(1, &handle);
-    }
-
-    operator GLuint() {
-        return handle;
-    }
-};
-
-struct VAO {
-    GLuint handle = NULL;
-    void Create() {
-        assert(!handle);
-        glGenVertexArrays(1, &handle);
-    }
-
-    ~VAO() {
-        glDeleteVertexArrays(1, &handle);
-    }
-
-    operator GLuint() {
-        return handle;
-    }
-};
+GL_RESOURCE_WRAPPER(VertexArray);
+GL_RESOURCE_WRAPPER(Buffer);
+GL_RESOURCE_WRAPPER(Texture);
 
 struct Program {
     GLuint vs_handle = NULL, fs_handle = NULL, prog_handle = NULL;
@@ -102,7 +75,7 @@ struct Program {
             }
         }
 
-		prog_handle = glCreateProgram();
+        prog_handle = glCreateProgram();
         glAttachShader(prog_handle, vs_handle);
         glAttachShader(prog_handle, fs_handle);
         glLinkProgram(prog_handle);
@@ -121,24 +94,26 @@ struct Program {
             return false;
         }
 
-	    glDetachShader(prog_handle, vs_handle);
+        glDetachShader(prog_handle, vs_handle);
         glDetachShader(prog_handle, fs_handle);
         return true;
-	}
+    }
 
-	~Program() {
+    ~Program() {
         glDeleteShader(vs_handle);
         glDeleteShader(fs_handle);
         glDeleteProgram(prog_handle);
-	}
+    }
 
     operator GLuint() {
         return prog_handle;
     }
 };
 
+#undef GL_RESOURCE_WRAPPER
+
 static void APIENTRY DebugHandler(GLenum source, GLenum type, GLuint id, GLenum severity,
                                   GLsizei length, const GLchar* message, const void* user_param) {
-        fmt::print("OpenGL {}: {}\n", id, message);
+    fmt::print("OpenGL {}: {}\n", id, message);
 }
 } // namespace OpenGL
