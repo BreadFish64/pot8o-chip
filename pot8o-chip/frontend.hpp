@@ -50,7 +50,7 @@ private:
     OpenGL::Texture frame_buffer;
     OpenGL::Program present_program;
     OpenGL::Buffer vertex_buffer;
-    OpenGL::VAO vao;
+    OpenGL::VertexArray vao;
     //std::unique_ptr<SDL_Renderer, SDL_Deleter> renderer;
     //std::unique_ptr<SDL_Texture, SDL_Deleter> texture;
 
