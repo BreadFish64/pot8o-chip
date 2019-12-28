@@ -174,8 +174,10 @@ void CLS() {
 #define CALL_addr(pc, addr)                                                                        \
     interface.cycle_count += pc - last_jump;                                                       \
     last_jump = addr;                                                                              \
-    stack[stack_ptr++] = jump_table[pc + 2];                                                       \
-    goto* jump_table[addr];
+    stack[stack_ptr++] = &&l##pc##_ret;                                                            \
+    goto* jump_table[addr];                                                                        \
+    l##pc##_ret:                                                                                   \
+    last_jump = pc + 2;                                                                            \
 
 #define SE_Vx_byte(pc, x, byte)                                                                    \
     if (V[x] == byte)                                                                              \
