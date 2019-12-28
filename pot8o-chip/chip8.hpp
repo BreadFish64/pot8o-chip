@@ -29,8 +29,8 @@ public:
         std::atomic_bool send_frame = true;
         std::atomic_bool stop_flag = false;
 
-        void PushFrameBuffer(Frame& frame) {
-            std::copy(frame.begin(), frame.end(), frame_buffer.begin());
+        void PushFrameBuffer(const Frame& frame) {
+            frame_buffer = frame;
             send_frame = false;
         }
     };

@@ -9,23 +9,23 @@ namespace OpenGL {
 
 constexpr char quad_source[] = R"(
 #version 450
-in vec2 a_pos;
-out vec2 v_tex_pos;
+in vec2 vertex_pos;
+out vec2 tex_coord;
 
 void main() {
-    v_tex_pos = a_pos;
-    gl_Position = vec4(1.0 - 2.0 * a_pos, 0, 1);
+    tex_coord = vertex_pos / 2 + .5;
+    gl_Position = vec4(vertex_pos * -1, 0, 1);
 })";
 
 constexpr char bpp_frag[] = R"(
 #version 450
-in vec2 v_tex_pos;
+in vec2 tex_coord;
 out vec4 frag_color;
 layout(binding=0) uniform usampler2D tex;
 
 void main() {
-    uvec4 pixel = texture(tex, v_tex_pos).rrra;
-    pixel &= 1u << uint(v_tex_pos.x * 64) % 8;
+    uvec4 pixel = texture(tex, tex_coord).rrrr;
+    pixel &= 1u << (uint(tex_coord.x * 64) & 7);
     frag_color = vec4(pixel);
 })";
 

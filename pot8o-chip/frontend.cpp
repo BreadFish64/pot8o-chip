@@ -1,3 +1,4 @@
+#include <array>
 #include <chrono>
 #include <fstream>
 #include <thread>
@@ -42,16 +43,18 @@ SDLFrontend::SDLFrontend() : chip8(std::make_unique<LLVMAOT>()) {
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, frame_buffer);
     present_program.Create({OpenGL::quad_source}, {OpenGL::bpp_frag});
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glUseProgram(present_program);
     vao.Create();
     glBindVertexArray(vao);
     vertex_buffer.Create();
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-    static constexpr GLfloat v_data[12]{0., 0., 1., 0., 0., 1., 0., 1., 1., 0., 1., 1.};
-    glBufferData(GL_ARRAY_BUFFER, sizeof(v_data), v_data, GL_STATIC_DRAW);
-    GLuint a_pos = glGetAttribLocation(present_program, "a_pos");
-    glEnableVertexAttribArray(a_pos);
-    glVertexAttribPointer(a_pos, 2, GL_FLOAT, false, 0, 0);
+    static constexpr std::array v_data{-1.f, -1.f, -1.f, 1.f, 1.f, -1.f, 1.f, 1.f};
+    glBufferData(GL_ARRAY_BUFFER, sizeof(v_data), v_data.data(), GL_STATIC_DRAW);
+    GLuint vertex_pos = glGetAttribLocation(present_program, "vertex_pos");
+    glEnableVertexAttribArray(vertex_pos);
+    glVertexAttribPointer(vertex_pos, 2, GL_FLOAT, false, 0, 0);
 
     /*
     renderer = std::unique_ptr<SDL_Renderer, SDL_Deleter>(
@@ -82,13 +85,11 @@ void SDLFrontend::LoadGame(std::string& path) {
     SDL_Event event;
     std::string title;
     for (;;) {
-        chip8.ConsumeFrameBuffer([this](auto frame) {
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, sizeof(frame[0]) / sizeof(std::uint8_t),
+        chip8.ConsumeFrameBuffer([this](const Chip8::Frame& frame) {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, sizeof(frame[0]),
                          frame.size(), 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, frame.data());
 
-            glDrawArrays(GL_TRIANGLES, 0, 6);
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
             SDL_GL_SwapWindow(window.get());
         });
         // SDL_UpdateTexture(texture.get(), nullptr, pixel_data.data(), 256);
@@ -108,9 +109,11 @@ void SDLFrontend::LoadGame(std::string& path) {
                     chip8.SetKey(key->second, event.key.state);
             } break;
             case SDL_WINDOWEVENT: {
-                int w, h;
-                SDL_GetWindowSize(window.get(), &w, &h);
-                glViewport(0, 0, w, h);
+                switch (event.window.event) {
+                case SDL_WINDOWEVENT_RESIZED: {
+                    glViewport(0, 0, event.window.data1, event.window.data2);
+                } break;
+                }
             } break;
             case SDL_QUIT:
                 chip8.Stop();
