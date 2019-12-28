@@ -252,8 +252,8 @@ void SHL_Vx() {
     V[x] <<= 1;
 }
 
-#define SE_Vx_Vy(pc, x, y)                                                                         \
-    if (V[x] == V[y])                                                                              \
+#define SNE_Vx_Vy(pc, x, y)                                                                         \
+    if (V[x] != V[y])                                                                              \
         goto* jump_table[pc + 4];
 
 template <unsigned addr>
