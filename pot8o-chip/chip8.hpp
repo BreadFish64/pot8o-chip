@@ -18,6 +18,9 @@ public:
     class CPU {
         friend Chip8;
         virtual void Run(Chip8::Interface& interface, std::vector<std::uint8_t> game) = 0;
+
+    public:
+        virtual ~CPU() = default;
     };
 
     struct Interface {

@@ -128,7 +128,7 @@ private:
         return opcode & 0x0FFF;
     }
 
-    friend class Chip8::Interface;
+    friend struct Chip8::Interface;
     Chip8::Interface* interface;
 
     // used for random number generation in intruction 0xC

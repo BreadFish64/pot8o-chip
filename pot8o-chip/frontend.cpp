@@ -24,19 +24,15 @@ SDLFrontend::SDLFrontend() : chip8(std::make_unique<LLVMAOT>()) {
         SDL_Deleter());
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
-#if _DEBUG
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
-#endif
     context = std::make_unique<GLContext>(window.get());
     if (!gladLoadGLLoader(SDL_GL_GetProcAddress))
         fmt::print("OpenGL failed to load");
     SDL_GL_SetSwapInterval(1);
 
-#if _DEBUG
     glEnable(GL_DEBUG_OUTPUT);
     glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
     glDebugMessageCallback(OpenGL::DebugHandler, nullptr);
-#endif
 
     // setup drawing
     frame_buffer.Create();
