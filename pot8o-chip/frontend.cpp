@@ -80,10 +80,12 @@ void SDLFrontend::LoadGame(std::string& path) {
     SDL_GetWindowDisplayMode(window.get(), &display_mode);
     SDL_Event event;
     std::string title;
+    std::uint64_t frame_count = 0;
+
     for (;;) {
         chip8.ConsumeFrameBuffer([this](const Chip8::Frame& frame) {
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, sizeof(frame[0]),
-                         frame.size(), 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, frame.data());
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, sizeof(frame[0]), frame.size(), 0,
+                         GL_RED_INTEGER, GL_UNSIGNED_BYTE, frame.data());
 
             glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
             SDL_GL_SwapWindow(window.get());
@@ -92,9 +94,11 @@ void SDLFrontend::LoadGame(std::string& path) {
         // SDL_RenderCopy(renderer.get(), texture.get(), nullptr, nullptr);
         // SDL_RenderPresent(renderer.get());
 
-        title = fmt::format("pot8o chip - {:0=.2} GHz",
-                            chip8.GetCycles() * display_mode.refresh_rate / 1'000'000'000.);
-        SDL_SetWindowTitle(window.get(), title.data());
+        ++frame_count;
+        if (!(frame_count % display_mode.refresh_rate)) {
+            title = fmt::format("pot8o chip - {:0=.2} GHz", chip8.GetCycles() / 1'000'000'000.);
+            SDL_SetWindowTitle(window.get(), title.data());
+        }
 
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
