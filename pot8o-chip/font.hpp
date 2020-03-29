@@ -1,7 +1,7 @@
 #include <array>
 #include <cstdint>
 
-// clang-format offz
+// clang-format off
 constexpr std::array<std::uint8_t, 80> FONT{
     // 0
     0b11110000,
